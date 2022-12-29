@@ -1,10 +1,18 @@
+import dataclasses
 import re
 from itertools import groupby
+from typing import Iterable
 
 from django.conf import settings
 from django.utils import timezone
 from telebot import TeleBot  # noqa
-from telebot.types import Message, ReplyKeyboardMarkup  # noqa
+from telebot.types import (  # noqa
+    Message,
+    ReplyKeyboardMarkup,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+    CallbackQuery,
+)
 
 from tg_bot.models import User, Days, Character, UserCharacter
 
@@ -15,6 +23,7 @@ class BotTextCommands:
     TODAY = "Сегодня"
     WEEK = "Неделя"
     WEEKLY_BOSSES = "Боссы"
+    DAILY_SUBSCRIPTION = "Рассылка"
     MANAGE_CHARACTERS = "Управлять персонажами"
     FOLLOW_CHARACTERS = "Следить"
     UNFOLLOW_CHARACTERS = "Отписаться"
@@ -27,10 +36,28 @@ class BotTextCommands:
         return f"^{text}$"
 
 
+class BotCallbackCommands:
+    @dataclasses.dataclass
+    class CallbackCommand:
+        text: str
+        callback_data: str
+
+        def as_inline_button(self) -> InlineKeyboardButton:
+            return InlineKeyboardButton(self.text, callback_data=self.callback_data)
+
+    SUBSCRIBE_DAILY = CallbackCommand("Включить", "en_daily_sub")
+    UNSUBSCRIBE_DAILY = CallbackCommand("Отключить", "dis_daily_sub")
+
+    @staticmethod
+    def as_func(callback_command: CallbackCommand) -> callable:
+        return lambda callback: callback.data == callback_command.callback_data
+
+
 class BotMessages:
     WEEKDAY_LABELS = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"]
 
     START = "Привет"
+    DAILY_SUBSCRIPTION = "Ежедневная рассылка"
     MANAGE_CHARACTERS = "Выбери, что ты хочешь сделать"
     FOLLOW_CHARACTERS = "Выбери, за кем ты хочешь следить"
     UNFOLLOW_CHARACTERS = "Выбери, от кого ты хочешь отписаться"
@@ -41,11 +68,11 @@ class BotMessages:
     CHARACTER_NOT_FOUND = "Если это персонаж, то я такого не нашел"
 
     @classmethod
-    def create_today_message(cls, user_characters: UserCharacter.objects) -> str:
+    def create_today_message(cls, user_characters: Iterable[UserCharacter]) -> str:
         def key(user_character: UserCharacter) -> str:
             return user_character.character.talent_domain.region.name
 
-        if not user_characters.exists():
+        if not user_characters:
             return cls.NO_FARM
 
         day_label = cls.WEEKDAY_LABELS[timezone.now().weekday()]
@@ -56,14 +83,14 @@ class BotMessages:
         )
 
     @classmethod
-    def create_week_message(cls, user_characters: UserCharacter.objects) -> str:
+    def create_week_message(cls, user_characters: Iterable[UserCharacter]) -> str:
         def key_talent_days(user_character: UserCharacter) -> int:
             return user_character.character.talent_days
 
         def key_region_name(user_character: UserCharacter) -> str:
             return user_character.character.talent_domain.region.name
 
-        if not user_characters.exists():
+        if not user_characters:
             return cls.NO_FARM
 
         text = ""
@@ -77,11 +104,11 @@ class BotMessages:
         return text
 
     @classmethod
-    def create_bosses_message(cls, user_characters: UserCharacter.objects) -> str:
+    def create_bosses_message(cls, user_characters: Iterable[UserCharacter]) -> str:
         def key(user_character: UserCharacter) -> str:
             return user_character.character.weekly_boss.name
 
-        if not user_characters.exists():
+        if not user_characters:
             return cls.NO_FARM
 
         return "\n\n".join(
@@ -107,7 +134,7 @@ class BotKeyboards:
     MAIN_MENU = (
         ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False)
         .row(BotTextCommands.WEEK, BotTextCommands.WEEKLY_BOSSES, BotTextCommands.TODAY)
-        .row(BotTextCommands.MANAGE_CHARACTERS)
+        .row(BotTextCommands.DAILY_SUBSCRIPTION, BotTextCommands.MANAGE_CHARACTERS)
     )
     MANAGE_CHARACTERS = (
         ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False)
@@ -116,17 +143,22 @@ class BotKeyboards:
     )
 
     @staticmethod
-    def create_follow_characters_keyboard(characters: Character.objects) -> ReplyKeyboardMarkup:
+    def create_follow_characters_keyboard(characters: Iterable[Character]) -> ReplyKeyboardMarkup:
         keyboard = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False)
         keyboard.add(*map(lambda character: character.name, characters), row_width=2)
         return keyboard.row(BotTextCommands.CANCEL)
 
     @staticmethod
-    def create_unfollow_characters_keyboard(characters: Character.objects) -> ReplyKeyboardMarkup:
+    def create_unfollow_characters_keyboard(characters: Iterable[Character]) -> ReplyKeyboardMarkup:
         keyboard = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False)
         keyboard.row(BotTextCommands.UNFOLLOW_ALL_CHARACTERS)
         keyboard.add(*map(lambda character: f"- {character.name}", characters), row_width=2)
         return keyboard.row(BotTextCommands.CANCEL)
+
+    @staticmethod
+    def create_inline_change_daily_subscription_keyboard(user: User) -> InlineKeyboardMarkup:
+        command = BotCallbackCommands.UNSUBSCRIBE_DAILY if user.is_subscribed else BotCallbackCommands.SUBSCRIBE_DAILY
+        return InlineKeyboardMarkup().row(command.as_inline_button())
 
 
 class BotRegexps:
@@ -167,6 +199,13 @@ def bot_command_start(message: Message) -> None:
     bot.send_message(user.chat_id, BotMessages.START, reply_markup=BotKeyboards.MAIN_MENU)
 
 
+@bot.message_handler(regexp=BotTextCommands.as_regexp(BotTextCommands.DAILY_SUBSCRIPTION))
+def bot_command_daily_subscription(message: Message) -> None:
+    user, _ = User.objects.get_or_create(chat_id=message.chat.id)
+    keyboard = BotKeyboards.create_inline_change_daily_subscription_keyboard(user)
+    bot.send_message(user.chat_id, BotMessages.DAILY_SUBSCRIPTION, reply_markup=keyboard)
+
+
 @bot.message_handler(regexp=BotTextCommands.as_regexp(BotTextCommands.MANAGE_CHARACTERS))
 @bot.message_handler(regexp=BotTextCommands.as_regexp(BotTextCommands.CANCEL))
 def bot_text_command_manage_characters(message: Message):
@@ -175,14 +214,14 @@ def bot_text_command_manage_characters(message: Message):
 
 @bot.message_handler(regexp=BotTextCommands.as_regexp(BotTextCommands.FOLLOW_CHARACTERS))
 def bot_text_command_follow_characters(message: Message):
-    characters = Character.objects.exclude(users__chat_id=message.chat.id)
+    characters = Character.objects.exclude(users__chat_id=message.chat.id).all()
     keyboard = BotKeyboards.create_follow_characters_keyboard(characters)
     bot.send_message(message.chat.id, BotMessages.FOLLOW_CHARACTERS, reply_markup=keyboard)
 
 
 @bot.message_handler(regexp=BotTextCommands.as_regexp(BotTextCommands.UNFOLLOW_CHARACTERS))
 def bot_text_command_unfollow_characters(message: Message):
-    characters = Character.objects.filter(users__chat_id=message.chat.id)
+    characters = Character.objects.filter(users__chat_id=message.chat.id).all()
     keyboard = BotKeyboards.create_unfollow_characters_keyboard(characters)
     bot.send_message(message.chat.id, BotMessages.UNFOLLOW_CHARACTERS, reply_markup=keyboard)
 
@@ -269,3 +308,13 @@ def bot_unfollow_character(message: Message) -> None:
         BotMessages.SUCCESSFULLY_UNFOLLOW_CHARACTER.format(name=character.name),
         reply_markup=BotKeyboards.MANAGE_CHARACTERS,
     )
+
+
+@bot.callback_query_handler(func=BotCallbackCommands.as_func(BotCallbackCommands.SUBSCRIBE_DAILY))
+@bot.callback_query_handler(func=BotCallbackCommands.as_func(BotCallbackCommands.UNSUBSCRIBE_DAILY))
+def bot_change_daily_subscription(callback: CallbackQuery) -> None:
+    user, _ = User.objects.get_or_create(chat_id=callback.message.chat.id)
+    user.is_subscribed = not user.is_subscribed
+    user.save(update_fields=["is_subscribed"])
+    keyboard = BotKeyboards.create_inline_change_daily_subscription_keyboard(user)
+    bot.edit_message_reply_markup(user.chat_id, callback.message.id, reply_markup=keyboard)

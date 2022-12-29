@@ -52,6 +52,7 @@ class Character(models.Model):
 class User(models.Model):
     chat_id = models.BigIntegerField(unique=True)
     characters = models.ManyToManyField(Character, related_name="users", through="UserCharacter")
+    is_subscribed = models.BooleanField(default=False)
 
 
 class UserCharacter(models.Model):

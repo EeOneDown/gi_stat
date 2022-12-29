@@ -135,3 +135,9 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 TELEGRAM_BOT_RELEASE_TOKEN = os.getenv("TELEGRAM_BOT_RELEASE_TOKEN")
 TELEGRAM_BOT_SECRET_TOKEN = os.getenv("TELEGRAM_BOT_SECRET_TOKEN")
+
+
+try:
+    from .local_settings import *  # noqa
+except ImportError:
+    pass
