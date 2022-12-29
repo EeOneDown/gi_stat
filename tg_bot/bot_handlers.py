@@ -241,7 +241,7 @@ def bot_text_command_weekly_bosses(message: Message) -> None:
 @bot.message_handler(regexp=BotRegexps.FOLLOW_CHARACTER.pattern)
 def bot_follow_character(message: Message) -> None:
     character_name, talents_dict = BotRegexps.parse_follow_message(message.text)
-    character = Character.objects.filter(name=character_name)
+    character = Character.objects.filter(name=character_name).first()
     if not character:
         bot.reply_to(message, BotMessages.CHARACTER_NOT_FOUND)
         return
@@ -258,7 +258,7 @@ def bot_follow_character(message: Message) -> None:
 @bot.message_handler(regexp=BotRegexps.UNFOLLOW_CHARACTER.pattern)
 def bot_unfollow_character(message: Message) -> None:
     character_name = BotRegexps.parse_unfollow_message(message.text)
-    character = Character.objects.filter(name=character_name)
+    character = Character.objects.filter(name=character_name).first()
     if not character:
         bot.reply_to(message, BotMessages.CHARACTER_NOT_FOUND)
         return
