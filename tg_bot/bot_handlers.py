@@ -34,10 +34,11 @@ class BotMessages:
     MANAGE_CHARACTERS = "Выбери, что ты хочешь сделать"
     FOLLOW_CHARACTERS = "Выбери, за кем ты хочешь следить"
     UNFOLLOW_CHARACTERS = "Выбери, от кого ты хочешь отписаться"
-    SUCCESSFULLY_FOLLOW_CHARACTER = "Ты следишь за: {name}\n\n" + MANAGE_CHARACTERS
-    SUCCESSFULLY_UNFOLLOW_CHARACTER = "Ты отписался от: {name}\n\n" + MANAGE_CHARACTERS
+    SUCCESSFULLY_FOLLOW_CHARACTER = "Добавил <b>{name}</b> в список твоих персонажей\n\n" + MANAGE_CHARACTERS
+    SUCCESSFULLY_UNFOLLOW_CHARACTER = "Убрал <s>{name}</s> из списка твоих персонажей\n\n" + MANAGE_CHARACTERS
     SUCCESSFULLY_UNFOLLOW_ALL_CHARACTER = "Ты отписался от всех персонажей\n\n" + MANAGE_CHARACTERS
     NO_FARM = f"Некого фармить. Если кого-то упустил, настрой в: <code>{BotTextCommands.MANAGE_CHARACTERS}</code>"
+    CHARACTER_NOT_FOUND = "Если это персонаж, то я такого не нашел"
 
     @classmethod
     def create_today_message(cls, user_characters: UserCharacter.objects) -> str:
@@ -240,7 +241,10 @@ def bot_text_command_weekly_bosses(message: Message) -> None:
 @bot.message_handler(regexp=BotRegexps.FOLLOW_CHARACTER.pattern)
 def bot_follow_character(message: Message) -> None:
     character_name, talents_dict = BotRegexps.parse_follow_message(message.text)
-    character = Character.objects.get(name=character_name)
+    character = Character.objects.first(name=character_name)
+    if not character:
+        bot.reply_to(message, BotMessages.CHARACTER_NOT_FOUND)
+        return
     user, _ = User.objects.get_or_create(chat_id=message.chat.id)
     user.characters.remove(character)
     user.characters.add(character, through_defaults=talents_dict)
@@ -254,7 +258,10 @@ def bot_follow_character(message: Message) -> None:
 @bot.message_handler(regexp=BotRegexps.UNFOLLOW_CHARACTER.pattern)
 def bot_unfollow_character(message: Message) -> None:
     character_name = BotRegexps.parse_unfollow_message(message.text)
-    character = Character.objects.get(name=character_name)
+    character = Character.objects.first(name=character_name)
+    if not character:
+        bot.reply_to(message, BotMessages.CHARACTER_NOT_FOUND)
+        return
     user, _ = User.objects.get_or_create(chat_id=message.chat.id)
     user.characters.remove(character)
     bot.send_message(
