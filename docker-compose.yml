@@ -1,0 +1,33 @@
+version: "3.9"
+
+services:
+  gi_stat_app:
+    container_name: "gi-stat-app"
+    build:
+      context: .
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/app/
+    entrypoint: ["./wait.sh"]
+    depends_on:
+      - gi_stat_app_db
+    env_file:
+      - .env
+  gi_stat_app_db:
+    container_name: "gi-stat-app-db"
+    image: mysql:8
+    volumes:
+      - gi-stat-app-db:/var/lib/mysql
+    restart: always
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root-password
+      MYSQL_DATABASE: gistat
+      MYSQL_USER: gistat
+      MYSQL_PASSWORD: password
+    command: "--character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci"
+volumes:
+  gi-stat-app-db: null
