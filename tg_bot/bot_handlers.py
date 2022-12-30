@@ -56,8 +56,8 @@ class BotCallbackCommands:
 class BotMessages:
     WEEKDAY_LABELS = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"]
 
-    START = "Привет"
-    DAILY_SUBSCRIPTION = "Ежедневная рассылка"
+    START = "Привет. Бот только для европейского сервера пока что"
+    DAILY_SUBSCRIPTION = "Ежедневная рассылка в 6 утра"
     MANAGE_CHARACTERS = "Выбери, что ты хочешь сделать"
     FOLLOW_CHARACTERS = "Выбери, за кем ты хочешь следить"
     UNFOLLOW_CHARACTERS = "Выбери, от кого ты хочешь отписаться"
