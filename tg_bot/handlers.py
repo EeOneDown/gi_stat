@@ -28,6 +28,48 @@ def bot_command_start(message: Message) -> None:
     bot.send_message(user.chat_id, BotMessages.START, reply_markup=BotKeyboards.MAIN_MENU)
 
 
+@bot.message_handler(regexp=BotTextCommands.TODAY.as_regexp())
+def bot_text_command_today(message: Message) -> None:
+    days = Days.get_by_weekday(timezone.now().weekday())
+    user_characters = (
+        UserCharacter.objects.filter(user__chat_id=message.chat.id, character__talent_days__in=days)
+        .select_related("character__talent_domain__region")
+        # order by region for in-code 'group by'
+        .order_by("character__talent_domain__region_id")
+        .all()
+    )
+    bot.send_message(
+        message.chat.id, BotMessages.create_today_message(user_characters), reply_markup=BotKeyboards.MAIN_MENU
+    )
+
+
+@bot.message_handler(regexp=BotTextCommands.WEEK.as_regexp())
+def bot_text_command_week(message: Message) -> None:
+    user_characters = (
+        UserCharacter.objects.filter(user__chat_id=message.chat.id)
+        .select_related("character__talent_domain__region")
+        # order by region for in-code 'group by'
+        .order_by("character__talent_days", "character__talent_domain__region_id")
+        .all()
+    )
+    bot.send_message(
+        message.chat.id, BotMessages.create_week_message(user_characters), reply_markup=BotKeyboards.MAIN_MENU
+    )
+
+
+@bot.message_handler(regexp=BotTextCommands.WEEKLY_BOSSES.as_regexp())
+def bot_text_command_weekly_bosses(message: Message) -> None:
+    user_characters = (
+        UserCharacter.objects.filter(user__chat_id=message.chat.id)
+        .select_related("character__weekly_boss")
+        .order_by("character__weekly_boss_id")  # order by region for the next 'group by'
+        .all()
+    )
+    bot.send_message(
+        message.chat.id, BotMessages.create_bosses_message(user_characters), reply_markup=BotKeyboards.MAIN_MENU
+    )
+
+
 @bot.message_handler(regexp=BotTextCommands.DAILY_SUBSCRIPTION.as_regexp())
 def bot_text_command_daily_subscription(message: Message) -> None:
     user, _ = User.objects.get_or_create(chat_id=message.chat.id)
@@ -77,48 +119,6 @@ def bot_text_command_unfollow_all_characters(message: Message) -> None:
     user.characters.clear()
     bot.send_message(
         user.chat_id, BotMessages.SUCCESSFULLY_UNFOLLOW_ALL_CHARACTERS, reply_markup=BotKeyboards.MANAGE_CHARACTERS
-    )
-
-
-@bot.message_handler(regexp=BotTextCommands.TODAY.as_regexp())
-def bot_text_command_today(message: Message) -> None:
-    days = Days.get_by_weekday(timezone.now().weekday())
-    user_characters = (
-        UserCharacter.objects.filter(user__chat_id=message.chat.id, character__talent_days__in=days)
-        .select_related("character__talent_domain__region")
-        # order by region for in-code 'group by'
-        .order_by("character__talent_domain__region_id")
-        .all()
-    )
-    bot.send_message(
-        message.chat.id, BotMessages.create_today_message(user_characters), reply_markup=BotKeyboards.MAIN_MENU
-    )
-
-
-@bot.message_handler(regexp=BotTextCommands.WEEK.as_regexp())
-def bot_text_command_week(message: Message) -> None:
-    user_characters = (
-        UserCharacter.objects.filter(user__chat_id=message.chat.id)
-        .select_related("character__talent_domain__region")
-        # order by region for in-code 'group by'
-        .order_by("character__talent_days", "character__talent_domain__region_id")
-        .all()
-    )
-    bot.send_message(
-        message.chat.id, BotMessages.create_week_message(user_characters), reply_markup=BotKeyboards.MAIN_MENU
-    )
-
-
-@bot.message_handler(regexp=BotTextCommands.WEEKLY_BOSSES.as_regexp())
-def bot_text_command_weekly_bosses(message: Message) -> None:
-    user_characters = (
-        UserCharacter.objects.filter(user__chat_id=message.chat.id)
-        .select_related("character__weekly_boss")
-        .order_by("character__weekly_boss_id")  # order by region for the next 'group by'
-        .all()
-    )
-    bot.send_message(
-        message.chat.id, BotMessages.create_bosses_message(user_characters), reply_markup=BotKeyboards.MAIN_MENU
     )
 
 
