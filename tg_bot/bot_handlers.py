@@ -20,14 +20,22 @@ bot = TeleBot(token=settings.TELEGRAM_BOT_RELEASE_TOKEN, threaded=False, parse_m
 
 
 class BotTextCommands:
+    class BotTextCommand(str):
+        def as_regexp(self) -> str:
+            return f"^{self}$"
+
+    _ = BotTextCommand
+
     TODAY = "Сегодня"
     WEEK = "Неделя"
     WEEKLY_BOSSES = "Боссы"
     DAILY_SUBSCRIPTION = "Рассылка"
     MANAGE_CHARACTERS = "Управлять персонажами"
-    FOLLOW_CHARACTERS = "Следить"
-    UNFOLLOW_CHARACTERS = "Отписаться"
-    UNFOLLOW_ALL_CHARACTERS = "Отписаться от всех"
+    CHARACTER_LIST = _("Мои персонажи")
+    FOLLOW_CHARACTERS = _("Добавить")
+    CHARACTER_TALENTS_INSTRUCTION = _("Добавить таланты")
+    UNFOLLOW_CHARACTERS = _("Удалить")
+    UNFOLLOW_ALL_CHARACTERS = _("Удалить всех")
     BACK = "Назад"
     CANCEL = "Отменить"
 
@@ -59,19 +67,19 @@ class BotMessages:
     START = "Привет\n\n<b>Бот только для европейского сервера</b>"
     DAILY_SUBSCRIPTION = "Ежедневная рассылка в 6 утра"
     MANAGE_CHARACTERS = "Выбери, что ты хочешь сделать"
-    FOLLOW_CHARACTERS = "Выбери, за кем ты хочешь следить"
-    UNFOLLOW_CHARACTERS = "Выбери, от кого ты хочешь отписаться"
-    SUCCESSFULLY_FOLLOW_CHARACTER = (
-        "<b>{name}</b> теперь в списке твоих персонажей\n"
-        "По желанию, чтобы добавить или обновить таланты, ответь на свое сообщение выше: <code>4 10 2</code>; "
-        "или в любой момент напиши: <code>{name} 6 4 1</code>\n\n"
-        + MANAGE_CHARACTERS
-    )
-    SUCCESSFULLY_UNFOLLOW_CHARACTER = "<s>{name}</s> больше не в списке твоих персонажей\n\n" + MANAGE_CHARACTERS
-    SUCCESSFULLY_UNFOLLOW_ALL_CHARACTER = "Ты отписался от всех персонажей\n\n" + MANAGE_CHARACTERS
+    FOLLOW_CHARACTERS = "Выбери, кого ты хочешь добавить"
+    UNFOLLOW_CHARACTERS = "Выбери, кого ты хочешь удалить"
+    SUCCESSFULLY_FOLLOW_CHARACTER = "<b>{name}</b> теперь в списке твоих персонажей"
+    SUCCESSFULLY_UNFOLLOW_CHARACTER = "<s>{name}</s> больше не в списке твоих персонажей"
+    SUCCESSFULLY_UNFOLLOW_ALL_CHARACTER = "Ты удалил всех своих персонажей"
     SUCCESSFULLY_UPDATED_CHARACTER_TALENTS = "Обновил таланты для персонажа <b>{name}</b>"
     NO_FARM = f"Некого фармить. Если кого-то упустил, настрой в: <code>{BotTextCommands.MANAGE_CHARACTERS}</code>"
     CHARACTER_NOT_FOUND = "Если это персонаж, то я такого не нашел"
+    CHARACTER_TALENTS_INSTRUCTION = (
+        "Чтобы добавить или обновить таланты, ответь на <b>свое</b> сообщение с именем персонажа, "
+        "указав уровни талантов через пробел: <code>4 10 2</code>; "
+        "или в любой момент напиши: <code>Эмбер 6 4 1</code>\n\n"
+    )
 
     @classmethod
     def create_today_message(cls, user_characters: Iterable[UserCharacter]) -> str:
@@ -122,6 +130,13 @@ class BotMessages:
             for weekly_boss_name, g_user_characters in groupby(user_characters, key)
         )
 
+    @classmethod
+    def create_character_list_message(cls, user_characters: Iterable[UserCharacter]) -> str:
+        if not user_characters:
+            return "Твой список персонажей <u>пуст</u>"
+
+        return "Вот список твоих персонажей:\n\n" + "\n".join(map(cls._format_user_character, user_characters))
+
     # helpers
     @staticmethod
     def _format_user_character(user_character: UserCharacter) -> str:
@@ -139,18 +154,19 @@ class BotMessages:
 class BotKeyboards:
     MAIN_MENU = (
         ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False)
-        .row(BotTextCommands.WEEK, BotTextCommands.WEEKLY_BOSSES, BotTextCommands.TODAY)
+        .row(BotTextCommands.WEEK, BotTextCommands.TODAY, BotTextCommands.WEEKLY_BOSSES)
         .row(BotTextCommands.DAILY_SUBSCRIPTION, BotTextCommands.MANAGE_CHARACTERS)
     )
     MANAGE_CHARACTERS = (
         ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False)
-        .row(BotTextCommands.FOLLOW_CHARACTERS, BotTextCommands.UNFOLLOW_CHARACTERS)
+        .row(BotTextCommands.CHARACTER_LIST, BotTextCommands.FOLLOW_CHARACTERS, BotTextCommands.UNFOLLOW_CHARACTERS)
         .row(BotTextCommands.BACK)
     )
 
     @staticmethod
     def create_follow_characters_keyboard(characters: Iterable[Character]) -> ReplyKeyboardMarkup:
         keyboard = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False)
+        keyboard.row(BotTextCommands.CHARACTER_TALENTS_INSTRUCTION)
         keyboard.add(*map(lambda character: character.name, characters), row_width=2)
         return keyboard.row(BotTextCommands.CANCEL)
 
@@ -232,11 +248,27 @@ def bot_text_command_manage_characters(message: Message):
     bot.send_message(message.chat.id, BotMessages.MANAGE_CHARACTERS, reply_markup=BotKeyboards.MANAGE_CHARACTERS)
 
 
+@bot.message_handler(regexp=BotTextCommands.CHARACTER_LIST.as_regexp())
+def bot_text_command_character_list(message: Message) -> None:
+    user_characters = (
+        UserCharacter.objects.filter(user__chat_id=message.chat.id)
+        .select_related("character")
+        .order_by("character__name")
+        .all()
+    )
+    bot.send_message(message.chat.id, BotMessages.create_character_list_message(user_characters))
+
+
 @bot.message_handler(regexp=BotTextCommands.as_regexp(BotTextCommands.FOLLOW_CHARACTERS))
 def bot_text_command_follow_characters(message: Message):
     characters = Character.objects.exclude(users__chat_id=message.chat.id).all()
     keyboard = BotKeyboards.create_follow_characters_keyboard(characters)
     bot.send_message(message.chat.id, BotMessages.FOLLOW_CHARACTERS, reply_markup=keyboard)
+
+
+@bot.message_handler(regexp=BotTextCommands.CHARACTER_TALENTS_INSTRUCTION.as_regexp())
+def bot_text_command_character_talents_instruction(message: Message) -> None:
+    bot.send_message(message.chat.id, BotMessages.CHARACTER_TALENTS_INSTRUCTION)
 
 
 @bot.message_handler(regexp=BotTextCommands.as_regexp(BotTextCommands.UNFOLLOW_CHARACTERS))
