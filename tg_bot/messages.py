@@ -11,7 +11,7 @@ from .models import UserCharacter, Days
 class BotMessages:
     WEEKDAY_LABELS = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"]
 
-    START = "Привет\n\n<b>Бот только для европейского сервера</b>"
+    START = "Привет\n\nСервер бота: <b>Европа</b>"
     DAILY_SUBSCRIPTION = "Ежедневная рассылка в <b>6 утра (МСК)</b>"
     MANAGE_CHARACTERS = "Выбери, что ты хочешь сделать"
     FOLLOW_CHARACTERS = "Выбери, кого ты хочешь добавить"
@@ -19,7 +19,7 @@ class BotMessages:
     SUCCESSFULLY_FOLLOW_CHARACTER = "<b>{name}</b> теперь в списке твоих персонажей"
     SUCCESSFULLY_UNFOLLOW_CHARACTER = "<s>{name}</s> больше не в списке твоих персонажей"
     SUCCESSFULLY_UNFOLLOW_ALL_CHARACTERS = "Ты удалил всех своих персонажей"
-    SUCCESSFULLY_UPDATED_CHARACTER_TALENTS = "Обновил таланты для персонажа <b>{name}</b>"
+    SUCCESSFULLY_UPDATED_CHARACTER_TALENTS = "Обновил персонажа <b>{name}</b>"
     NO_FARM = f"Некого фармить. Если кого-то упустил, настрой в: <code>{BotTextCommands.MANAGE_CHARACTERS}</code>"
     CHARACTER_NOT_FOUND = "Если это персонаж, то я такого не нашел"
     CHARACTER_TALENTS_INSTRUCTION = (
@@ -105,11 +105,11 @@ class BotRegexps:
 
     @classmethod
     def parse_follow_message(cls, text: str) -> tuple[str, dict[str, int]]:
-        """Returns a character name and talents dict (or empty dict)"""
+        """Returns a character name and talents dict"""
         match = cls.FOLLOW_CHARACTER.match(text)
         character_name = match.groupdict()["name"]
         talents = match.groupdict()["talents"]
-        return character_name, cls.parse_character_talents_message(talents) if talents else {}
+        return character_name, cls.parse_character_talents_message(talents)
 
     @classmethod
     def parse_unfollow_message(cls, text: str) -> str:
@@ -125,7 +125,9 @@ class BotRegexps:
             # 0 <= x <= 15
             return max(min(int(x), 15), 0)
 
-        normal_attack, elemental_skill, elemental_burst = map(limit_talent, text.split())
+        normal_attack, elemental_skill, elemental_burst = 0, 0, 0
+        if text:
+            normal_attack, elemental_skill, elemental_burst = map(limit_talent, text.split())
         return {
             "normal_attack": normal_attack,
             "elemental_skill": elemental_skill,

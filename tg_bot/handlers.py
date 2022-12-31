@@ -128,11 +128,10 @@ def bot_regexp_follow_character(message: Message) -> None:
     character_name, talents_dict = BotRegexps.parse_follow_message(message.text)
     character = Character.objects.get(name=character_name)
     user, _ = User.objects.get_or_create(chat_id=message.chat.id)
-    user.characters.remove(character)
-    user.characters.add(character, through_defaults=talents_dict)
+    user_character, _ = UserCharacter.objects.update_or_create(user=user, character=character, defaults=talents_dict)
     bot.send_message(
         user.chat_id,
-        BotMessages.SUCCESSFULLY_FOLLOW_CHARACTER.format(name=character.name),
+        BotMessages.SUCCESSFULLY_FOLLOW_CHARACTER.format(name=BotMessages.format_user_character(user_character)),
         reply_markup=BotKeyboards.MANAGE_CHARACTERS,
     )
 
@@ -163,9 +162,13 @@ def bot_regexp_character_talents(message: Message) -> None:
     character_name, _ = BotRegexps.parse_follow_message(message.reply_to_message.text)
     character = Character.objects.get(name=character_name)
     user, _ = User.objects.get_or_create(chat_id=message.chat.id)
-    user.characters.remove(character)
-    user.characters.add(character, through_defaults=talents_dict)
-    bot.send_message(user.chat_id, BotMessages.SUCCESSFULLY_UPDATED_CHARACTER_TALENTS.format(name=character.name))
+    user_character, _ = UserCharacter.objects.update_or_create(user=user, character=character, defaults=talents_dict)
+    bot.send_message(
+        user.chat_id,
+        BotMessages.SUCCESSFULLY_UPDATED_CHARACTER_TALENTS.format(
+            name=BotMessages.format_user_character(user_character)
+        ),
+    )
 
 
 @bot.callback_query_handler(func=BotCallbackCommands.SUBSCRIBE_DAILY.as_func())
