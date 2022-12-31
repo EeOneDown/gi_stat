@@ -56,14 +56,20 @@ class BotCallbackCommands:
 class BotMessages:
     WEEKDAY_LABELS = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"]
 
-    START = "Привет. Бот только для европейского сервера пока что"
+    START = "Привет\n\n<b>Бот только для европейского сервера</b>"
     DAILY_SUBSCRIPTION = "Ежедневная рассылка в 6 утра"
     MANAGE_CHARACTERS = "Выбери, что ты хочешь сделать"
     FOLLOW_CHARACTERS = "Выбери, за кем ты хочешь следить"
     UNFOLLOW_CHARACTERS = "Выбери, от кого ты хочешь отписаться"
-    SUCCESSFULLY_FOLLOW_CHARACTER = "Добавил <b>{name}</b> в список твоих персонажей\n\n" + MANAGE_CHARACTERS
-    SUCCESSFULLY_UNFOLLOW_CHARACTER = "Убрал <s>{name}</s> из списка твоих персонажей\n\n" + MANAGE_CHARACTERS
+    SUCCESSFULLY_FOLLOW_CHARACTER = (
+        "<b>{name}</b> теперь в списке твоих персонажей\n"
+        "По желанию, чтобы добавить или обновить таланты, ответь на свое сообщение выше: <code>4 10 2</code>; "
+        "или в любой момент напиши: <code>{name} 6 4 1</code>\n\n"
+        + MANAGE_CHARACTERS
+    )
+    SUCCESSFULLY_UNFOLLOW_CHARACTER = "<s>{name}</s> больше не в списке твоих персонажей\n\n" + MANAGE_CHARACTERS
     SUCCESSFULLY_UNFOLLOW_ALL_CHARACTER = "Ты отписался от всех персонажей\n\n" + MANAGE_CHARACTERS
+    SUCCESSFULLY_UPDATED_CHARACTER_TALENTS = "Обновил таланты для персонажа <b>{name}</b>"
     NO_FARM = f"Некого фармить. Если кого-то упустил, настрой в: <code>{BotTextCommands.MANAGE_CHARACTERS}</code>"
     CHARACTER_NOT_FOUND = "Если это персонаж, то я такого не нашел"
 
@@ -164,32 +170,46 @@ class BotKeyboards:
 class BotRegexps:
     FOLLOW_CHARACTER = re.compile(r"^(?P<name>[а-яА-Я]+(?:[ -][а-яА-Я()]+)?)(?P<talents>(?: \d\d?){3})?$")
     UNFOLLOW_CHARACTER = re.compile(r"^- ?(?P<name>[а-яА-Я]+(?: [а-яА-Я]+)?)$")
+    CHARACTER_TALENTS = re.compile(r"^\d\d? \d\d? \d\d?$")
 
     @classmethod
     def parse_follow_message(cls, text: str) -> tuple[str, dict[str, int]]:
         """Returns a character name and talents dict (or empty dict)"""
+        match = cls.FOLLOW_CHARACTER.match(text)
+        character_name = match.groupdict()["name"]
+        talents = match.groupdict()["talents"]
+        return character_name, cls.parse_character_talents_message(talents) if talents else {}
+
+    @classmethod
+    def parse_unfollow_message(cls, text: str) -> str:
+        """Returns a character name"""
+        match = cls.UNFOLLOW_CHARACTER.match(text)
+        return match.groupdict()["name"]
+
+    @classmethod
+    def parse_character_talents_message(cls, text: str) -> dict:
+        """Returns a character talents dict"""
 
         def limit_talent(x: str) -> int:
             # 0 <= x <= 15
             return max(min(int(x), 15), 0)
 
-        match = cls.FOLLOW_CHARACTER.match(text)
-        character_name = match.groupdict()["name"]
-        talents = match.groupdict()["talents"]
-        if not talents:
-            return character_name, {}
-        normal_attack, elemental_skill, elemental_burst = map(limit_talent, talents.split())
-        return character_name, {
+        normal_attack, elemental_skill, elemental_burst = map(limit_talent, text.split())
+        return {
             "normal_attack": normal_attack,
             "elemental_skill": elemental_skill,
             "elemental_burst": elemental_burst,
         }
 
-    @classmethod
-    def parse_unfollow_message(cls, text: str) -> str:
-        """Returns a character name"""
-        match = BotRegexps.UNFOLLOW_CHARACTER.match(text)
-        return match.groupdict()["name"]
+
+def handle_character_not_found(function: callable) -> callable:
+    def wrapper(message: Message) -> None:
+        try:
+            function(message)
+        except Character.DoesNotExist:
+            bot.reply_to(message, BotMessages.CHARACTER_NOT_FOUND)
+
+    return wrapper
 
 
 @bot.message_handler(commands=["start"])
@@ -278,12 +298,10 @@ def bot_text_command_weekly_bosses(message: Message) -> None:
 
 
 @bot.message_handler(regexp=BotRegexps.FOLLOW_CHARACTER.pattern)
+@handle_character_not_found
 def bot_follow_character(message: Message) -> None:
     character_name, talents_dict = BotRegexps.parse_follow_message(message.text)
-    character = Character.objects.filter(name=character_name).first()
-    if not character:
-        bot.reply_to(message, BotMessages.CHARACTER_NOT_FOUND)
-        return
+    character = Character.objects.get(name=character_name)
     user, _ = User.objects.get_or_create(chat_id=message.chat.id)
     user.characters.remove(character)
     user.characters.add(character, through_defaults=talents_dict)
@@ -295,12 +313,10 @@ def bot_follow_character(message: Message) -> None:
 
 
 @bot.message_handler(regexp=BotRegexps.UNFOLLOW_CHARACTER.pattern)
+@handle_character_not_found
 def bot_unfollow_character(message: Message) -> None:
     character_name = BotRegexps.parse_unfollow_message(message.text)
-    character = Character.objects.filter(name=character_name).first()
-    if not character:
-        bot.reply_to(message, BotMessages.CHARACTER_NOT_FOUND)
-        return
+    character = Character.objects.get(name=character_name)
     user, _ = User.objects.get_or_create(chat_id=message.chat.id)
     user.characters.remove(character)
     bot.send_message(
@@ -308,6 +324,23 @@ def bot_unfollow_character(message: Message) -> None:
         BotMessages.SUCCESSFULLY_UNFOLLOW_CHARACTER.format(name=character.name),
         reply_markup=BotKeyboards.MANAGE_CHARACTERS,
     )
+
+
+@bot.message_handler(
+    # new talents
+    regexp=BotRegexps.CHARACTER_TALENTS.pattern,
+    # replies to added character
+    func=lambda message: message.reply_to_message and BotRegexps.FOLLOW_CHARACTER.match(message.reply_to_message.text),
+)
+@handle_character_not_found
+def bot_character_talents(message: Message) -> None:
+    talents_dict = BotRegexps.parse_character_talents_message(message.text)
+    character_name, _ = BotRegexps.parse_follow_message(message.reply_to_message.text)
+    character = Character.objects.get(name=character_name)
+    user, _ = User.objects.get_or_create(chat_id=message.chat.id)
+    user.characters.remove(character)
+    user.characters.add(character, through_defaults=talents_dict)
+    bot.send_message(user.chat_id, BotMessages.SUCCESSFULLY_UPDATED_CHARACTER_TALENTS.format(name=character.name))
 
 
 @bot.callback_query_handler(func=BotCallbackCommands.as_func(BotCallbackCommands.SUBSCRIBE_DAILY))
