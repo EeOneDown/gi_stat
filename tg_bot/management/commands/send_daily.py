@@ -4,7 +4,8 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from telebot.apihelper import ApiException  # noqa
 
-from tg_bot.bot_handlers import bot, BotMessages
+from tg_bot.handlers import bot
+from tg_bot.messages import BotMessages
 from tg_bot.models import UserCharacter, Days
 
 

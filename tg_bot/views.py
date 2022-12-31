@@ -7,7 +7,7 @@ from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from telebot.types import Update  # noqa
 
-from .bot_handlers import bot
+from .handlers import bot
 
 logger = logging.getLogger(__name__)
 
