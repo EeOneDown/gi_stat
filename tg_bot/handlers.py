@@ -22,13 +22,13 @@ def handle_character_not_found(function: callable) -> callable:
 
 
 @bot.message_handler(commands=[BotSlashCommands.START])
-@bot.message_handler(regexp=BotTextCommands.BACK.as_regexp())
+@bot.message_handler(func=BotTextCommands.BACK.as_func())
 def bot_command_start(message: Message) -> None:
     user, _ = User.objects.get_or_create(chat_id=message.chat.id)
     bot.send_message(user.chat_id, BotMessages.START, reply_markup=BotKeyboards.MAIN_MENU)
 
 
-@bot.message_handler(regexp=BotTextCommands.TODAY.as_regexp())
+@bot.message_handler(func=BotTextCommands.TODAY.as_func())
 def bot_text_command_today(message: Message) -> None:
     days = Days.get_by_weekday(timezone.now().weekday())
     user_characters = (
@@ -43,7 +43,7 @@ def bot_text_command_today(message: Message) -> None:
     )
 
 
-@bot.message_handler(regexp=BotTextCommands.WEEK.as_regexp())
+@bot.message_handler(func=BotTextCommands.WEEK.as_func())
 def bot_text_command_week(message: Message) -> None:
     user_characters = (
         UserCharacter.objects.filter(user__chat_id=message.chat.id)
@@ -57,7 +57,7 @@ def bot_text_command_week(message: Message) -> None:
     )
 
 
-@bot.message_handler(regexp=BotTextCommands.WEEKLY_BOSSES.as_regexp())
+@bot.message_handler(func=BotTextCommands.WEEKLY_BOSSES.as_func())
 def bot_text_command_weekly_bosses(message: Message) -> None:
     user_characters = (
         UserCharacter.objects.filter(user__chat_id=message.chat.id)
@@ -70,20 +70,20 @@ def bot_text_command_weekly_bosses(message: Message) -> None:
     )
 
 
-@bot.message_handler(regexp=BotTextCommands.DAILY_SUBSCRIPTION.as_regexp())
+@bot.message_handler(func=BotTextCommands.DAILY_SUBSCRIPTION.as_func())
 def bot_text_command_daily_subscription(message: Message) -> None:
     user, _ = User.objects.get_or_create(chat_id=message.chat.id)
     keyboard = BotKeyboards.create_inline_change_daily_subscription_keyboard(user)
     bot.send_message(user.chat_id, BotMessages.DAILY_SUBSCRIPTION, reply_markup=keyboard)
 
 
-@bot.message_handler(regexp=BotTextCommands.MANAGE_CHARACTERS.as_regexp())
-@bot.message_handler(regexp=BotTextCommands.CANCEL.as_regexp())
+@bot.message_handler(func=BotTextCommands.MANAGE_CHARACTERS.as_func())
+@bot.message_handler(func=BotTextCommands.CANCEL.as_func())
 def bot_text_command_manage_characters(message: Message) -> None:
     bot.send_message(message.chat.id, BotMessages.MANAGE_CHARACTERS, reply_markup=BotKeyboards.MANAGE_CHARACTERS)
 
 
-@bot.message_handler(regexp=BotTextCommands.CHARACTER_LIST.as_regexp())
+@bot.message_handler(func=BotTextCommands.CHARACTER_LIST.as_func())
 def bot_text_command_character_list(message: Message) -> None:
     user_characters = (
         UserCharacter.objects.filter(user__chat_id=message.chat.id)
@@ -94,26 +94,26 @@ def bot_text_command_character_list(message: Message) -> None:
     bot.send_message(message.chat.id, BotMessages.create_character_list_message(user_characters))
 
 
-@bot.message_handler(regexp=BotTextCommands.FOLLOW_CHARACTERS.as_regexp())
+@bot.message_handler(func=BotTextCommands.FOLLOW_CHARACTERS.as_func())
 def bot_text_command_follow_characters(message: Message) -> None:
     characters = Character.objects.exclude(users__chat_id=message.chat.id).all()
     keyboard = BotKeyboards.create_follow_characters_keyboard(characters)
     bot.send_message(message.chat.id, BotMessages.FOLLOW_CHARACTERS, reply_markup=keyboard)
 
 
-@bot.message_handler(regexp=BotTextCommands.CHARACTER_TALENTS_INSTRUCTION.as_regexp())
+@bot.message_handler(func=BotTextCommands.CHARACTER_TALENTS_INSTRUCTION.as_func())
 def bot_text_command_character_talents_instruction(message: Message) -> None:
     bot.send_message(message.chat.id, BotMessages.CHARACTER_TALENTS_INSTRUCTION)
 
 
-@bot.message_handler(regexp=BotTextCommands.UNFOLLOW_CHARACTERS.as_regexp())
+@bot.message_handler(func=BotTextCommands.UNFOLLOW_CHARACTERS.as_func())
 def bot_text_command_unfollow_characters(message: Message) -> None:
     characters = Character.objects.filter(users__chat_id=message.chat.id).all()
     keyboard = BotKeyboards.create_unfollow_characters_keyboard(characters)
     bot.send_message(message.chat.id, BotMessages.UNFOLLOW_CHARACTERS, reply_markup=keyboard)
 
 
-@bot.message_handler(regexp=BotTextCommands.UNFOLLOW_ALL_CHARACTERS.as_regexp())
+@bot.message_handler(func=BotTextCommands.UNFOLLOW_ALL_CHARACTERS.as_func())
 def bot_text_command_unfollow_all_characters(message: Message) -> None:
     user, _ = User.objects.get_or_create(chat_id=message.chat.id)
     user.characters.clear()

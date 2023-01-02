@@ -9,8 +9,8 @@ class BotSlashCommands:
 
 class BotTextCommands:
     class BotTextCommand(str):
-        def as_regexp(self) -> str:
-            return f"^{self}$"
+        def as_func(self) -> callable:
+            return lambda message: message.text == self
 
     _ = BotTextCommand
 
