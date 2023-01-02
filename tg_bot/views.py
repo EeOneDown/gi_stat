@@ -22,10 +22,10 @@ def set_tg_bot_webhook(request: HttpRequest):
 
 @csrf_exempt
 def tg_bot_webhook(request: HttpRequest):
-    if (
-        request.method != "POST"
-        and request.content_type != "application/json"
-        and request.headers.get("X-Telegram-Bot-Api-Secret-Token") != settings.TELEGRAM_BOT_SECRET_TOKEN
+    if not (
+        request.method == "POST"
+        and request.content_type == "application/json"
+        and request.headers.get("X-Telegram-Bot-Api-Secret-Token") == settings.TELEGRAM_BOT_SECRET_TOKEN
     ):
         return HttpResponseForbidden()
     try:
