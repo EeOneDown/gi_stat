@@ -28,7 +28,7 @@ class BotMessages:
         "или в любой момент напиши: <code>Эмбер 6 4 1</code>\n\n"
     )
     EMPTY_CHARACTER_LIST = "Твой список персонажей <u>пуст</u>"
-    CHARACTER_LIST = "Вот список твоих персонажей:\n\n{list}"
+    CHARACTER_LIST_LABEL = "Вот список твоих персонажей:\n\n"
 
     @classmethod
     def create_today_message(cls, user_characters: Iterable[UserCharacter]) -> str:
@@ -60,9 +60,7 @@ class BotMessages:
         for day, day_g_user_characters in groupby(user_characters, key_talent_days):
             text += f"<u>{dict(Days.choices)[day]}</u>\n"
             for region_name, region_g_user_characters in groupby(day_g_user_characters, key_region_name):
-                text += (
-                    f"<b>{region_name}</b>: {', '.join(map(cls.format_user_character, region_g_user_characters))}\n"
-                )
+                text += f"<b>{region_name}</b>: {', '.join(map(cls.format_user_character, region_g_user_characters))}\n"
             text += "\n"
         return text
 
@@ -84,7 +82,7 @@ class BotMessages:
         if not user_characters:
             return cls.EMPTY_CHARACTER_LIST
 
-        return cls.CHARACTER_LIST.format(list="\n".join(map(cls.format_user_character, user_characters)))
+        return cls.CHARACTER_LIST_LABEL + "\n".join(map(cls.format_user_character, user_characters))
 
     # helpers
     @staticmethod
