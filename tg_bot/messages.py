@@ -12,7 +12,7 @@ class BotMessages:
     WEEKDAY_LABELS = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"]
 
     START = "Привет\n\nСервер бота: <b>Европа</b>"
-    DAILY_SUBSCRIPTION = "Ежедневная рассылка в <b>6 утра (МСК)</b>"
+    DAILY_SUBSCRIPTION = "Ежедневная рассылка <i>без звука</i> в <b>6 утра (МСК)</b>"
     MANAGE_CHARACTERS = "Выбери, что ты хочешь сделать"
     FOLLOW_CHARACTERS = "Выбери, кого ты хочешь добавить"
     UNFOLLOW_CHARACTERS = "Выбери, кого ты хочешь удалить"
@@ -27,6 +27,8 @@ class BotMessages:
         "указав уровни талантов через пробел: <code>4 10 2</code>; "
         "или в любой момент напиши: <code>Эмбер 6 4 1</code>\n\n"
     )
+    EMPTY_CHARACTER_LIST = "Твой список персонажей <u>пуст</u>"
+    CHARACTER_LIST = "Вот список твоих персонажей:\n\n{list}"
 
     @classmethod
     def create_today_message(cls, user_characters: Iterable[UserCharacter]) -> str:
@@ -80,9 +82,9 @@ class BotMessages:
     @classmethod
     def create_character_list_message(cls, user_characters: Iterable[UserCharacter]) -> str:
         if not user_characters:
-            return "Твой список персонажей <u>пуст</u>"
+            return cls.EMPTY_CHARACTER_LIST
 
-        return "Вот список твоих персонажей:\n\n" + "\n".join(map(cls.format_user_character, user_characters))
+        return cls.CHARACTER_LIST.format(list="\n".join(map(cls.format_user_character, user_characters)))
 
     # helpers
     @staticmethod
