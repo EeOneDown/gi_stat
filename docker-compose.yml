@@ -20,6 +20,7 @@ services:
     image: mysql:8
     volumes:
       - gi-stat-app-db:/var/lib/mysql
+      - ./docker/provision/mysql/init:/docker-entrypoint-initdb.d
     restart: always
     ports:
       - "3306:3306"
