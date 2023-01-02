@@ -25,6 +25,7 @@ def handle_character_not_found(function: callable) -> callable:
 @bot.message_handler(func=BotTextCommands.BACK.as_func())
 def bot_command_start(message: Message) -> None:
     user, _ = User.objects.get_or_create(chat_id=message.chat.id)
+
     bot.send_message(user.chat_id, BotMessages.START, reply_markup=BotKeyboards.MAIN_MENU)
 
 
@@ -38,9 +39,9 @@ def bot_text_command_today(message: Message) -> None:
         .order_by("character__talent_domain__region_id")
         .all()
     )
-    bot.send_message(
-        message.chat.id, BotMessages.create_today_message(user_characters), reply_markup=BotKeyboards.MAIN_MENU
-    )
+
+    text = BotMessages.create_today_message(user_characters)
+    bot.send_message(message.chat.id, text, reply_markup=BotKeyboards.MAIN_MENU)
 
 
 @bot.message_handler(func=BotTextCommands.WEEK.as_func())
@@ -52,9 +53,9 @@ def bot_text_command_week(message: Message) -> None:
         .order_by("character__talent_days", "character__talent_domain__region_id")
         .all()
     )
-    bot.send_message(
-        message.chat.id, BotMessages.create_week_message(user_characters), reply_markup=BotKeyboards.MAIN_MENU
-    )
+
+    text = BotMessages.create_week_message(user_characters)
+    bot.send_message(message.chat.id, text, reply_markup=BotKeyboards.MAIN_MENU)
 
 
 @bot.message_handler(func=BotTextCommands.WEEKLY_BOSSES.as_func())
@@ -65,14 +66,15 @@ def bot_text_command_weekly_bosses(message: Message) -> None:
         .order_by("character__weekly_boss_id")  # order by region for the next 'group by'
         .all()
     )
-    bot.send_message(
-        message.chat.id, BotMessages.create_bosses_message(user_characters), reply_markup=BotKeyboards.MAIN_MENU
-    )
+
+    text = BotMessages.create_bosses_message(user_characters)
+    bot.send_message(message.chat.id, text, reply_markup=BotKeyboards.MAIN_MENU)
 
 
 @bot.message_handler(func=BotTextCommands.DAILY_SUBSCRIPTION.as_func())
 def bot_text_command_daily_subscription(message: Message) -> None:
     user, _ = User.objects.get_or_create(chat_id=message.chat.id)
+
     keyboard = BotKeyboards.create_inline_change_daily_subscription_keyboard(user)
     bot.send_message(user.chat_id, BotMessages.DAILY_SUBSCRIPTION, reply_markup=keyboard)
 
@@ -91,12 +93,14 @@ def bot_text_command_character_list(message: Message) -> None:
         .order_by("character__name")
         .all()
     )
+
     bot.send_message(message.chat.id, BotMessages.create_character_list_message(user_characters))
 
 
 @bot.message_handler(func=BotTextCommands.FOLLOW_CHARACTERS.as_func())
 def bot_text_command_follow_characters(message: Message) -> None:
     characters = Character.objects.exclude(users__chat_id=message.chat.id).all()
+
     keyboard = BotKeyboards.create_follow_characters_keyboard(characters)
     bot.send_message(message.chat.id, BotMessages.FOLLOW_CHARACTERS, reply_markup=keyboard)
 
@@ -109,6 +113,7 @@ def bot_text_command_character_talents_instruction(message: Message) -> None:
 @bot.message_handler(func=BotTextCommands.UNFOLLOW_CHARACTERS.as_func())
 def bot_text_command_unfollow_characters(message: Message) -> None:
     characters = Character.objects.filter(users__chat_id=message.chat.id).all()
+
     keyboard = BotKeyboards.create_unfollow_characters_keyboard(characters)
     bot.send_message(message.chat.id, BotMessages.UNFOLLOW_CHARACTERS, reply_markup=keyboard)
 
@@ -117,52 +122,56 @@ def bot_text_command_unfollow_characters(message: Message) -> None:
 def bot_text_command_unfollow_all_characters(message: Message) -> None:
     user, _ = User.objects.get_or_create(chat_id=message.chat.id)
     user.characters.clear()
-    bot.send_message(
-        user.chat_id, BotMessages.SUCCESSFULLY_UNFOLLOW_ALL_CHARACTERS, reply_markup=BotKeyboards.MANAGE_CHARACTERS
-    )
+
+    text = BotMessages.SUCCESSFULLY_UNFOLLOW_ALL_CHARACTERS
+    bot.send_message(user.chat_id, text, reply_markup=BotKeyboards.MANAGE_CHARACTERS)
 
 
 @bot.message_handler(regexp=BotRegexps.FOLLOW_CHARACTER.pattern)
 @handle_character_not_found
 def bot_regexp_follow_character(message: Message) -> None:
     character_name, talents_dict = BotRegexps.parse_follow_message(message.text)
+
     character = Character.objects.get(name=character_name)
     user, _ = User.objects.get_or_create(chat_id=message.chat.id)
     user_character, _ = UserCharacter.objects.update_or_create(user=user, character=character, defaults=talents_dict)
-    bot.send_message(
-        user.chat_id,
-        BotMessages.create_successfully_follow_character_message(user_character),
-        reply_markup=BotKeyboards.MANAGE_CHARACTERS,
-    )
+
+    text = BotMessages.create_successfully_follow_character_message(user_character)
+    bot.send_message(user.chat_id, text, reply_markup=BotKeyboards.MANAGE_CHARACTERS)
 
 
 @bot.message_handler(regexp=BotRegexps.UNFOLLOW_CHARACTER.pattern)
 @handle_character_not_found
 def bot_regexp_unfollow_character(message: Message) -> None:
     character_name = BotRegexps.parse_unfollow_message(message.text)
+
     character = Character.objects.get(name=character_name)
     user, _ = User.objects.get_or_create(chat_id=message.chat.id)
     user.characters.remove(character)
-    bot.send_message(
-        user.chat_id,
-        BotMessages.create_successfully_unfollow_character_message(character),
-        reply_markup=BotKeyboards.MANAGE_CHARACTERS,
-    )
+
+    text = BotMessages.create_successfully_unfollow_character_message(character)
+    bot.send_message(user.chat_id, text, reply_markup=BotKeyboards.MANAGE_CHARACTERS)
 
 
 @bot.message_handler(
     # new talents
     regexp=BotRegexps.CHARACTER_TALENTS.pattern,
     # replies to added character
-    func=lambda message: message.reply_to_message and BotRegexps.FOLLOW_CHARACTER.match(message.reply_to_message.text),
+    func=lambda message: (
+        message.reply_to_message
+        and message.from_user.id == message.reply_to_message.from_user.id
+        and BotRegexps.FOLLOW_CHARACTER.match(message.reply_to_message.text)
+    ),
 )
 @handle_character_not_found
 def bot_regexp_character_talents(message: Message) -> None:
     talents_dict = BotRegexps.parse_character_talents_message(message.text)
     character_name, _ = BotRegexps.parse_follow_message(message.reply_to_message.text)
+
     character = Character.objects.get(name=character_name)
     user, _ = User.objects.get_or_create(chat_id=message.chat.id)
     user_character, _ = UserCharacter.objects.update_or_create(user=user, character=character, defaults=talents_dict)
+
     bot.send_message(user.chat_id, BotMessages.create_successfully_updated_character_talents_message(user_character))
 
 
@@ -172,5 +181,6 @@ def bot_callback_daily_subscription(callback: CallbackQuery) -> None:
     user, _ = User.objects.get_or_create(chat_id=callback.message.chat.id)
     user.is_subscribed = not user.is_subscribed
     user.save(update_fields=["is_subscribed"])
+
     keyboard = BotKeyboards.create_inline_change_daily_subscription_keyboard(user)
     bot.edit_message_reply_markup(user.chat_id, callback.message.id, reply_markup=keyboard)
