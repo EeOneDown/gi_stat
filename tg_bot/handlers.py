@@ -131,7 +131,7 @@ def bot_regexp_follow_character(message: Message) -> None:
     user_character, _ = UserCharacter.objects.update_or_create(user=user, character=character, defaults=talents_dict)
     bot.send_message(
         user.chat_id,
-        BotMessages.SUCCESSFULLY_FOLLOW_CHARACTER.format(name=BotMessages.format_user_character(user_character)),
+        BotMessages.create_successfully_follow_character_message(user_character),
         reply_markup=BotKeyboards.MANAGE_CHARACTERS,
     )
 
@@ -145,7 +145,7 @@ def bot_regexp_unfollow_character(message: Message) -> None:
     user.characters.remove(character)
     bot.send_message(
         user.chat_id,
-        BotMessages.SUCCESSFULLY_UNFOLLOW_CHARACTER.format(name=character.name),
+        BotMessages.create_successfully_unfollow_character_message(character),
         reply_markup=BotKeyboards.MANAGE_CHARACTERS,
     )
 
@@ -163,12 +163,7 @@ def bot_regexp_character_talents(message: Message) -> None:
     character = Character.objects.get(name=character_name)
     user, _ = User.objects.get_or_create(chat_id=message.chat.id)
     user_character, _ = UserCharacter.objects.update_or_create(user=user, character=character, defaults=talents_dict)
-    bot.send_message(
-        user.chat_id,
-        BotMessages.SUCCESSFULLY_UPDATED_CHARACTER_TALENTS.format(
-            name=BotMessages.format_user_character(user_character)
-        ),
-    )
+    bot.send_message(user.chat_id, BotMessages.create_successfully_updated_character_talents_message(user_character))
 
 
 @bot.callback_query_handler(func=BotCallbackCommands.SUBSCRIBE_DAILY.as_func())

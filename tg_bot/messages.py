@@ -5,7 +5,7 @@ from typing import Iterable
 from django.utils import timezone
 
 from .commands import BotTextCommands
-from .models import UserCharacter, Days
+from .models import UserCharacter, Days, Character
 
 
 class BotMessages:
@@ -16,10 +16,7 @@ class BotMessages:
     MANAGE_CHARACTERS = "Выбери, что ты хочешь сделать"
     FOLLOW_CHARACTERS = "Выбери, кого ты хочешь добавить"
     UNFOLLOW_CHARACTERS = "Выбери, кого ты хочешь удалить"
-    SUCCESSFULLY_FOLLOW_CHARACTER = "<b>{name}</b> теперь в списке твоих персонажей"
-    SUCCESSFULLY_UNFOLLOW_CHARACTER = "<s>{name}</s> больше не в списке твоих персонажей"
     SUCCESSFULLY_UNFOLLOW_ALL_CHARACTERS = "Ты удалил всех своих персонажей"
-    SUCCESSFULLY_UPDATED_CHARACTER_TALENTS = "Обновил персонажа <b>{name}</b>"
     NO_FARM = f"Некого фармить. Если кого-то упустил, настрой в: <code>{BotTextCommands.MANAGE_CHARACTERS}</code>"
     CHARACTER_NOT_FOUND = "Если это персонаж, то я такого не нашел"
     CHARACTER_TALENTS_INSTRUCTION = (
@@ -28,7 +25,6 @@ class BotMessages:
         "или в любой момент напиши: <code>Эмбер 6 4 1</code>\n\n"
     )
     EMPTY_CHARACTER_LIST = "Твой список персонажей <u>пуст</u>"
-    CHARACTER_LIST_LABEL = "Вот список твоих персонажей:\n\n"
 
     @classmethod
     def create_today_message(cls, user_characters: Iterable[UserCharacter]) -> str:
@@ -82,7 +78,19 @@ class BotMessages:
         if not user_characters:
             return cls.EMPTY_CHARACTER_LIST
 
-        return cls.CHARACTER_LIST_LABEL + "\n".join(map(cls.format_user_character, user_characters))
+        return "Вот список твоих персонажей:\n\n" + "\n".join(map(cls.format_user_character, user_characters))
+
+    @classmethod
+    def create_successfully_follow_character_message(cls, user_character: UserCharacter) -> str:
+        return f"<b>{cls.format_user_character(user_character)}</b> теперь в списке твоих персонажей"
+
+    @classmethod
+    def create_successfully_unfollow_character_message(cls, character: Character) -> str:
+        return f"<s>{character.name}</s> больше не в списке твоих персонажей"
+
+    @classmethod
+    def create_successfully_updated_character_talents_message(cls, user_character: UserCharacter) -> str:
+        return f"Обновил персонажа <b>{cls.format_user_character(user_character)}</b>"
 
     # helpers
     @staticmethod
