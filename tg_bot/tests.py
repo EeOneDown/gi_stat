@@ -8,6 +8,7 @@ from django.urls import reverse
 from tg_bot.models import User, Region, WeeklyBoss, Domain, Character, Days
 
 
+@override_settings(TELEGRAM_BOT_SECRET_TOKEN="test-token")
 class TelegramBotTestCase(TestCase):
     def setUp(self) -> None:
         self.client.post = partial(
@@ -22,6 +23,13 @@ class TelegramBotTestCase(TestCase):
             "language_code": "en",
             "is_premium": True,
         }
+        self.from_bot = {
+            "id": 987654321,
+            "is_bot": True,
+            "first_name": "Bot",
+            "username": "test_bot",
+        }
+        self.bot_message_id = 9999
         self.chat = {
             "id": self.from_user["id"],
             "first_name": "Test",
@@ -146,8 +154,31 @@ class TelegramBotTestCase(TestCase):
             },
         }
 
+    def create_user_callback_query_data(self, data: str) -> dict:
+        return {
+            "update_id": 842895974,
+            "callback_query": {
+                "id": "860998169111195948",
+                "from": self.from_user,
+                "message": {
+                    "message_id": self.bot_message_id,
+                    "from": self.from_bot,
+                    "chat": self.chat,
+                    "date": 1672710369,
+                    "text": "some-test",
+                    "entities": [],
+                    "reply_markup": {"inline_keyboard": [[{"text": "btn", "callback_data": data}]]},
+                },
+                "chat_instance": "-4263294929375246591",
+                "data": data,
+            },
+        }
+
     def assertKeyboard(self, first, second: list[list[str]]):
         self.assertListEqual([[btn["text"] for btn in row] for row in first.keyboard], second)
+
+    def assertInlineKeyboard(self, first, second: list[list[tuple[str, str]]]):
+        self.assertListEqual([[(btn.text, btn.callback_data) for btn in row] for row in first.keyboard], second)
 
 
 @override_settings(TELEGRAM_BOT_SECRET_TOKEN="new-test-token")
@@ -161,7 +192,6 @@ class ForbiddenRequestTestCase(TelegramBotTestCase):
         self.assertEqual(response.status_code, 403)
 
 
-@override_settings(TELEGRAM_BOT_SECRET_TOKEN="test-token")
 @patch("telebot.TeleBot.send_message")
 class StartCommandTestCase(TelegramBotTestCase):
     def test_start_command(self, mocked_send_message: Mock):
@@ -184,7 +214,6 @@ class StartCommandTestCase(TelegramBotTestCase):
         )
 
 
-@override_settings(TELEGRAM_BOT_SECRET_TOKEN="test-token")
 @patch("telebot.TeleBot.send_message")
 class TodayTextCommandTestCase(TelegramBotTestCase):
     def test_no_farm(self, mocked_send_message: Mock):
@@ -227,7 +256,6 @@ class TodayTextCommandTestCase(TelegramBotTestCase):
         )
 
 
-@override_settings(TELEGRAM_BOT_SECRET_TOKEN="test-token")
 @patch("telebot.TeleBot.send_message")
 class WeeklyBossesTextCommandTestCase(TelegramBotTestCase):
     def test_no_farm(self, mocked_send_message: Mock):
@@ -262,7 +290,6 @@ class WeeklyBossesTextCommandTestCase(TelegramBotTestCase):
         )
 
 
-@override_settings(TELEGRAM_BOT_SECRET_TOKEN="test-token")
 @patch("telebot.TeleBot.send_message")
 class WeekTextCommandTestCase(TelegramBotTestCase):
     def test_no_farm(self, mocked_send_message: Mock):
@@ -307,3 +334,86 @@ class WeekTextCommandTestCase(TelegramBotTestCase):
         self.assertKeyboard(
             called_kwargs["reply_markup"], [["Неделя", "Сегодня", "Боссы"], ["Рассылка", "Управлять персонажами"]]
         )
+
+
+@patch("telebot.TeleBot.send_message")
+class DailySubscriptionTextCommandTestCase(TelegramBotTestCase):
+    def test_not_subscribed(self, mocked_send_message: Mock):
+        self.client.post(reverse("tg_bot_webhook"), data=self.create_user_text_message_data("Рассылка"))
+        mocked_send_message.assert_called_once()
+        called_args, called_kwargs = mocked_send_message.call_args
+        self.assertTupleEqual(
+            called_args, (self.chat["id"], "Ежедневная рассылка <i>без звука</i> в <b>6 утра (МСК)</b>")
+        )
+        self.assertInlineKeyboard(called_kwargs["reply_markup"], [[("Включить", "en_daily_sub")]])
+
+    def test_subscribed(self, mocked_send_message: Mock):
+        User.objects.create(chat_id=self.chat["id"], is_subscribed=True)
+        self.client.post(reverse("tg_bot_webhook"), data=self.create_user_text_message_data("Рассылка"))
+        mocked_send_message.assert_called_once()
+        called_args, called_kwargs = mocked_send_message.call_args
+        self.assertTupleEqual(
+            called_args, (self.chat["id"], "Ежедневная рассылка <i>без звука</i> в <b>6 утра (МСК)</b>")
+        )
+        self.assertInlineKeyboard(called_kwargs["reply_markup"], [[("Отключить", "dis_daily_sub")]])
+
+
+@patch("telebot.TeleBot.send_message")
+class ManageCharactersTextCommandTestCase(TelegramBotTestCase):
+    def test_manage_characters_command(self, mocked_send_message: Mock):
+        self.client.post(reverse("tg_bot_webhook"), data=self.create_user_text_message_data("Управлять персонажами"))
+        mocked_send_message.assert_called_once()
+        called_args, called_kwargs = mocked_send_message.call_args
+        self.assertTupleEqual(called_args, (self.chat["id"], "Выбери, что ты хочешь сделать"))
+        self.assertKeyboard(called_kwargs["reply_markup"], [["Мои персонажи", "Добавить", "Удалить"], ["Назад"]])
+
+    def test_cancel_command(self, mocked_send_message: Mock):
+        self.client.post(reverse("tg_bot_webhook"), data=self.create_user_text_message_data("Отменить"))
+        mocked_send_message.assert_called_once()
+        called_args, called_kwargs = mocked_send_message.call_args
+        self.assertTupleEqual(called_args, (self.chat["id"], "Выбери, что ты хочешь сделать"))
+        self.assertKeyboard(called_kwargs["reply_markup"], [["Мои персонажи", "Добавить", "Удалить"], ["Назад"]])
+
+
+@patch("telebot.TeleBot.edit_message_reply_markup")
+class DailySubscriptionCallbackTestCase(TelegramBotTestCase):
+    def test_subscribe(self, mocked_send_message: Mock):
+        self.client.post(reverse("tg_bot_webhook"), data=self.create_user_callback_query_data("en_daily_sub"))
+        mocked_send_message.assert_called_once()
+        called_args, called_kwargs = mocked_send_message.call_args
+        self.assertTupleEqual(called_args, (self.chat["id"], self.bot_message_id))
+        self.assertInlineKeyboard(called_kwargs["reply_markup"], [[("Отключить", "dis_daily_sub")]])
+        self.assertTrue(User.objects.filter(chat_id=self.chat["id"], is_subscribed=True).exists())
+
+    def test_unsubscribe(self, mocked_send_message: Mock):
+        User.objects.create(chat_id=self.chat["id"], is_subscribed=True)
+        self.client.post(reverse("tg_bot_webhook"), data=self.create_user_callback_query_data("dis_daily_sub"))
+        mocked_send_message.assert_called_once()
+        called_args, called_kwargs = mocked_send_message.call_args
+        self.assertTupleEqual(called_args, (self.chat["id"], self.bot_message_id))
+        self.assertInlineKeyboard(called_kwargs["reply_markup"], [[("Включить", "en_daily_sub")]])
+        self.assertTrue(User.objects.filter(chat_id=self.chat["id"], is_subscribed=False).exists())
+
+
+@patch("logging.Logger.error")
+class HandlerFailedTestCase(TelegramBotTestCase):
+    def test_log_called(self, mocked_logger_error: Mock):
+        with patch("telebot.TeleBot.process_new_updates", side_effect=Exception):
+            response = self.client.post(reverse("tg_bot_webhook"), data={"test": "test"})
+
+        self.assertEqual(response.status_code, 200)
+        mocked_logger_error.assert_called_once()
+
+
+@override_settings(BASE_DOMAIN="test.com")
+@override_settings(TELEGRAM_BOT_SECRET_TOKEN="test-secret-token")
+@patch("telebot.TeleBot.set_webhook")
+class SetWebhookTestCase(TestCase):
+    def test_bot_called(self, mocked_set_webhook: Mock):
+        response = self.client.get(reverse("set_webhook"))
+        self.assertEqual(response.status_code, 200)
+        mocked_set_webhook.assert_called_once()
+        called_args, called_kwargs = mocked_set_webhook.call_args
+        self.assertTupleEqual(called_args, ())
+        self.assertEqual(called_kwargs["url"], "https://test.com/tg_bot/webhook")
+        self.assertEqual(called_kwargs["secret_token"], "test-secret-token")
