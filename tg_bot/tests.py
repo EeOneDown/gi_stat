@@ -255,6 +255,34 @@ class TodayTextCommandTestCase(TelegramBotTestCase):
             called_kwargs["reply_markup"], [["Неделя", "Сегодня", "Боссы"], ["Рассылка", "Управлять персонажами"]]
         )
 
+    @patch("django.utils.timezone.now", lambda: datetime(2023, 1, 1))
+    def test_valid_message__sunday(self, mocked_send_message: Mock):
+        self.populate_test_data()
+
+        user = User.objects.create(chat_id=self.chat["id"])
+        user.characters.set(
+            Character.objects.filter(
+                name__in=["c_mt_d1_wb1", "c_tf_d2_wb1", "c_ws_d3_wb1", "c_a_d4_wb1"]
+            ).all(),
+            through_defaults={"normal_attack": 1, "elemental_skill": 1, "elemental_burst": 1},
+        )
+        self.assertEqual(user.characters.all().count(), 4)
+
+        self.client.post(reverse("tg_bot_webhook"), data=self.create_user_text_message_data("Сегодня"))
+        mocked_send_message.assert_called_once()
+        called_args, called_kwargs = mocked_send_message.call_args
+        good_text = (
+            "<u>Воскресенье</u>\n"
+            "<b>r1</b>: c_mt_d1_wb1 <i>(1, 1, 1)</i>\n\n"
+            "<b>r2</b>: c_tf_d2_wb1 <i>(1, 1, 1)</i>\n\n"
+            "<b>r3</b>: c_ws_d3_wb1 <i>(1, 1, 1)</i>\n\n"
+            "<b>r4</b>: c_a_d4_wb1 <i>(1, 1, 1)</i>"
+        )
+        self.assertTupleEqual(called_args, (self.chat["id"], good_text))
+        self.assertKeyboard(
+            called_kwargs["reply_markup"], [["Неделя", "Сегодня", "Боссы"], ["Рассылка", "Управлять персонажами"]]
+        )
+
 
 @patch("telebot.TeleBot.send_message")
 class WeeklyBossesTextCommandTestCase(TelegramBotTestCase):
