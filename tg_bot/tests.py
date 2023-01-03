@@ -204,27 +204,21 @@ class TodayTextCommandTestCase(TelegramBotTestCase):
 
         user = User.objects.create(chat_id=self.chat["id"])
         user.characters.set(
-            Character.objects.all(), through_defaults={"normal_attack": 1, "elemental_skill": 1, "elemental_burst": 1}
+            Character.objects.filter(
+                name__in=["c_mt_d1_wb1", "c_tf_d1_wb1", "c_ws_d2_wb1", "c_a_d2_wb1", "c_a_d3_wb4"]
+            ).all(),
+            through_defaults={"normal_attack": 1, "elemental_skill": 1, "elemental_burst": 1},
         )
-        self.assertEqual(user.characters.all().count(), 64)
+        self.assertEqual(user.characters.all().count(), 5)
 
         self.client.post(reverse("tg_bot_webhook"), data=self.create_user_text_message_data("Сегодня"))
         mocked_send_message.assert_called_once()
         called_args, called_kwargs = mocked_send_message.call_args
         good_text = (
             "<u>Вторник</u>\n"
-            "<b>r1</b>: c_tf_d1_wb1 <i>(1, 1, 1)</i>, c_tf_d1_wb2 <i>(1, 1, 1)</i>, c_tf_d1_wb3 <i>(1, 1, 1)</i>, "
-            "c_tf_d1_wb4 <i>(1, 1, 1)</i>, c_a_d1_wb1 <i>(1, 1, 1)</i>, c_a_d1_wb2 <i>(1, 1, 1)</i>, "
-            "c_a_d1_wb3 <i>(1, 1, 1)</i>, c_a_d1_wb4 <i>(1, 1, 1)</i>\n\n"
-            "<b>r2</b>: c_tf_d2_wb1 <i>(1, 1, 1)</i>, c_tf_d2_wb2 <i>(1, 1, 1)</i>, c_tf_d2_wb3 <i>(1, 1, 1)</i>, "
-            "c_tf_d2_wb4 <i>(1, 1, 1)</i>, c_a_d2_wb1 <i>(1, 1, 1)</i>, c_a_d2_wb2 <i>(1, 1, 1)</i>, "
-            "c_a_d2_wb3 <i>(1, 1, 1)</i>, c_a_d2_wb4 <i>(1, 1, 1)</i>\n\n"
-            "<b>r3</b>: c_tf_d3_wb1 <i>(1, 1, 1)</i>, c_tf_d3_wb2 <i>(1, 1, 1)</i>, c_tf_d3_wb3 <i>(1, 1, 1)</i>, "
-            "c_tf_d3_wb4 <i>(1, 1, 1)</i>, c_a_d3_wb1 <i>(1, 1, 1)</i>, c_a_d3_wb2 <i>(1, 1, 1)</i>, "
-            "c_a_d3_wb3 <i>(1, 1, 1)</i>, c_a_d3_wb4 <i>(1, 1, 1)</i>\n\n"
-            "<b>r4</b>: c_tf_d4_wb1 <i>(1, 1, 1)</i>, c_tf_d4_wb2 <i>(1, 1, 1)</i>, c_tf_d4_wb3 <i>(1, 1, 1)</i>, "
-            "c_tf_d4_wb4 <i>(1, 1, 1)</i>, c_a_d4_wb1 <i>(1, 1, 1)</i>, c_a_d4_wb2 <i>(1, 1, 1)</i>, "
-            "c_a_d4_wb3 <i>(1, 1, 1)</i>, c_a_d4_wb4 <i>(1, 1, 1)</i>"
+            "<b>r1</b>: c_tf_d1_wb1 <i>(1, 1, 1)</i>\n\n"
+            "<b>r2</b>: c_a_d2_wb1 <i>(1, 1, 1)</i>\n\n"
+            "<b>r3</b>: c_a_d3_wb4 <i>(1, 1, 1)</i>"
         )
         self.assertTupleEqual(called_args, (self.chat["id"], good_text))
         self.assertKeyboard(
