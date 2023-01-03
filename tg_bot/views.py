@@ -1,3 +1,4 @@
+import json
 import logging
 from urllib.parse import urljoin
 
@@ -13,11 +14,12 @@ logger = logging.getLogger(__name__)
 
 
 def set_tg_bot_webhook(request: HttpRequest):
-    bot.set_webhook(
-        url=urljoin(f"https://{settings.BASE_DOMAIN}", reverse("tg_bot_webhook")),
-        secret_token=settings.TELEGRAM_BOT_SECRET_TOKEN,
-    )
-    return HttpResponse(b"OK", status=200)
+    webhook = {
+        "url": urljoin(f"https://{settings.BASE_DOMAIN}", reverse("tg_bot_webhook")),
+        "secret_token": settings.TELEGRAM_BOT_SECRET_TOKEN,
+    }
+    bot.set_webhook(**webhook)
+    return HttpResponse(json.dumps(webhook).encode(), status=200)
 
 
 @csrf_exempt

@@ -1,7 +1,7 @@
 from datetime import datetime
-from functools import partial
 from unittest.mock import patch, Mock
 
+from django.contrib.auth.models import User as DjangoUser
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
@@ -11,9 +11,6 @@ from tg_bot.models import User, Region, WeeklyBoss, Domain, Character, Days
 @override_settings(TELEGRAM_BOT_SECRET_TOKEN="test-token")
 class TelegramBotTestCase(TestCase):
     def setUp(self) -> None:
-        self.client.post = partial(
-            self.client.post, content_type="application/json", HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN="test-token"
-        )
         self.from_user = {
             "id": 1234567890,
             "is_bot": False,
@@ -129,6 +126,16 @@ class TelegramBotTestCase(TestCase):
         u1.characters.set(Character.objects.all(), through_defaults={})
         u2.characters.set(Character.objects.all(), through_defaults={})
 
+    def make_asserted_bot_request(self, data: dict, secret_token: str = None, expected_status_code: int = 200):
+        response = self.client.post(
+            reverse("tg_bot_webhook"),
+            data=data,
+            content_type="application/json",
+            HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN=secret_token or "test-token",
+        )
+        self.assertEqual(response.status_code, expected_status_code)
+        return response
+
     def create_user_command_message_data(self, command: str) -> dict:
         return {
             "update_id": 842895972,
@@ -181,11 +188,11 @@ class TelegramBotTestCase(TestCase):
         self.assertListEqual([[(btn.text, btn.callback_data) for btn in row] for row in first.keyboard], second)
 
 
-@override_settings(TELEGRAM_BOT_SECRET_TOKEN="new-test-token")
 class ForbiddenRequestTestCase(TelegramBotTestCase):
     def test_no_secret_key(self):
-        response = self.client.post(reverse("tg_bot_webhook"), data=self.create_user_command_message_data("/start"))
-        self.assertEqual(response.status_code, 403)
+        self.make_asserted_bot_request(
+            self.create_user_command_message_data("/start"), secret_token="bad", expected_status_code=403
+        )
 
     def test_get_request(self):
         response = self.client.get(reverse("tg_bot_webhook"))
@@ -195,7 +202,7 @@ class ForbiddenRequestTestCase(TelegramBotTestCase):
 @patch("telebot.TeleBot.send_message")
 class StartCommandTestCase(TelegramBotTestCase):
     def test_start_command(self, mocked_send_message: Mock):
-        self.client.post(reverse("tg_bot_webhook"), data=self.create_user_command_message_data("/start"))
+        self.make_asserted_bot_request(self.create_user_command_message_data("/start"))
         mocked_send_message.assert_called_once()
         called_args, called_kwargs = mocked_send_message.call_args
         self.assertTupleEqual(called_args, (self.chat["id"], "Привет\n\nСервер бота: <b>Европа</b>"))
@@ -205,7 +212,7 @@ class StartCommandTestCase(TelegramBotTestCase):
 
     def test_back_text_command(self, mocked_send_message: Mock):
         self.assertTrue(User.objects.create(chat_id=self.chat["id"]))
-        self.client.post(reverse("tg_bot_webhook"), data=self.create_user_text_message_data("Назад"))
+        self.make_asserted_bot_request(self.create_user_text_message_data("Назад"))
         mocked_send_message.assert_called_once()
         called_args, called_kwargs = mocked_send_message.call_args
         self.assertTupleEqual(called_args, (self.chat["id"], "Привет\n\nСервер бота: <b>Европа</b>"))
@@ -217,7 +224,7 @@ class StartCommandTestCase(TelegramBotTestCase):
 @patch("telebot.TeleBot.send_message")
 class TodayTextCommandTestCase(TelegramBotTestCase):
     def test_no_farm(self, mocked_send_message: Mock):
-        self.client.post(reverse("tg_bot_webhook"), data=self.create_user_text_message_data("Сегодня"))
+        self.make_asserted_bot_request(self.create_user_text_message_data("Сегодня"))
         mocked_send_message.assert_called_once()
         called_args, called_kwargs = mocked_send_message.call_args
         self.assertTupleEqual(
@@ -241,7 +248,7 @@ class TodayTextCommandTestCase(TelegramBotTestCase):
         )
         self.assertEqual(user.characters.all().count(), 5)
 
-        self.client.post(reverse("tg_bot_webhook"), data=self.create_user_text_message_data("Сегодня"))
+        self.make_asserted_bot_request(self.create_user_text_message_data("Сегодня"))
         mocked_send_message.assert_called_once()
         called_args, called_kwargs = mocked_send_message.call_args
         good_text = (
@@ -261,14 +268,12 @@ class TodayTextCommandTestCase(TelegramBotTestCase):
 
         user = User.objects.create(chat_id=self.chat["id"])
         user.characters.set(
-            Character.objects.filter(
-                name__in=["c_mt_d1_wb1", "c_tf_d2_wb1", "c_ws_d3_wb1", "c_a_d4_wb1"]
-            ).all(),
+            Character.objects.filter(name__in=["c_mt_d1_wb1", "c_tf_d2_wb1", "c_ws_d3_wb1", "c_a_d4_wb1"]).all(),
             through_defaults={"normal_attack": 1, "elemental_skill": 1, "elemental_burst": 1},
         )
         self.assertEqual(user.characters.all().count(), 4)
 
-        self.client.post(reverse("tg_bot_webhook"), data=self.create_user_text_message_data("Сегодня"))
+        self.make_asserted_bot_request(self.create_user_text_message_data("Сегодня"))
         mocked_send_message.assert_called_once()
         called_args, called_kwargs = mocked_send_message.call_args
         good_text = (
@@ -287,7 +292,7 @@ class TodayTextCommandTestCase(TelegramBotTestCase):
 @patch("telebot.TeleBot.send_message")
 class WeeklyBossesTextCommandTestCase(TelegramBotTestCase):
     def test_no_farm(self, mocked_send_message: Mock):
-        self.client.post(reverse("tg_bot_webhook"), data=self.create_user_text_message_data("Боссы"))
+        self.make_asserted_bot_request(self.create_user_text_message_data("Боссы"))
         mocked_send_message.assert_called_once()
         called_args, called_kwargs = mocked_send_message.call_args
         self.assertTupleEqual(
@@ -308,7 +313,7 @@ class WeeklyBossesTextCommandTestCase(TelegramBotTestCase):
         )
         self.assertEqual(user.characters.all().count(), 3)
 
-        self.client.post(reverse("tg_bot_webhook"), data=self.create_user_text_message_data("Боссы"))
+        self.make_asserted_bot_request(self.create_user_text_message_data("Боссы"))
         mocked_send_message.assert_called_once()
         called_args, called_kwargs = mocked_send_message.call_args
         good_text = "<u><b>wb1</b></u>: c_ws_d2_wb1\n\n<u><b>wb3</b></u>: c_a_d2_wb3\n\n<u><b>wb4</b></u>: c_a_d3_wb4"
@@ -321,7 +326,7 @@ class WeeklyBossesTextCommandTestCase(TelegramBotTestCase):
 @patch("telebot.TeleBot.send_message")
 class WeekTextCommandTestCase(TelegramBotTestCase):
     def test_no_farm(self, mocked_send_message: Mock):
-        self.client.post(reverse("tg_bot_webhook"), data=self.create_user_text_message_data("Неделя"))
+        self.make_asserted_bot_request(self.create_user_text_message_data("Неделя"))
         mocked_send_message.assert_called_once()
         called_args, called_kwargs = mocked_send_message.call_args
         self.assertTupleEqual(
@@ -344,7 +349,7 @@ class WeekTextCommandTestCase(TelegramBotTestCase):
         )
         self.assertEqual(user.characters.all().count(), 5)
 
-        self.client.post(reverse("tg_bot_webhook"), data=self.create_user_text_message_data("Неделя"))
+        self.make_asserted_bot_request(self.create_user_text_message_data("Неделя"))
         mocked_send_message.assert_called_once()
         called_args, called_kwargs = mocked_send_message.call_args
         good_text = (
@@ -367,7 +372,7 @@ class WeekTextCommandTestCase(TelegramBotTestCase):
 @patch("telebot.TeleBot.send_message")
 class DailySubscriptionTextCommandTestCase(TelegramBotTestCase):
     def test_not_subscribed(self, mocked_send_message: Mock):
-        self.client.post(reverse("tg_bot_webhook"), data=self.create_user_text_message_data("Рассылка"))
+        self.make_asserted_bot_request(self.create_user_text_message_data("Рассылка"))
         mocked_send_message.assert_called_once()
         called_args, called_kwargs = mocked_send_message.call_args
         self.assertTupleEqual(
@@ -377,7 +382,7 @@ class DailySubscriptionTextCommandTestCase(TelegramBotTestCase):
 
     def test_subscribed(self, mocked_send_message: Mock):
         User.objects.create(chat_id=self.chat["id"], is_subscribed=True)
-        self.client.post(reverse("tg_bot_webhook"), data=self.create_user_text_message_data("Рассылка"))
+        self.make_asserted_bot_request(self.create_user_text_message_data("Рассылка"))
         mocked_send_message.assert_called_once()
         called_args, called_kwargs = mocked_send_message.call_args
         self.assertTupleEqual(
@@ -389,14 +394,14 @@ class DailySubscriptionTextCommandTestCase(TelegramBotTestCase):
 @patch("telebot.TeleBot.send_message")
 class ManageCharactersTextCommandTestCase(TelegramBotTestCase):
     def test_manage_characters_command(self, mocked_send_message: Mock):
-        self.client.post(reverse("tg_bot_webhook"), data=self.create_user_text_message_data("Управлять персонажами"))
+        self.make_asserted_bot_request(self.create_user_text_message_data("Управлять персонажами"))
         mocked_send_message.assert_called_once()
         called_args, called_kwargs = mocked_send_message.call_args
         self.assertTupleEqual(called_args, (self.chat["id"], "Выбери, что ты хочешь сделать"))
         self.assertKeyboard(called_kwargs["reply_markup"], [["Мои персонажи", "Добавить", "Удалить"], ["Назад"]])
 
     def test_cancel_command(self, mocked_send_message: Mock):
-        self.client.post(reverse("tg_bot_webhook"), data=self.create_user_text_message_data("Отменить"))
+        self.make_asserted_bot_request(self.create_user_text_message_data("Отменить"))
         mocked_send_message.assert_called_once()
         called_args, called_kwargs = mocked_send_message.call_args
         self.assertTupleEqual(called_args, (self.chat["id"], "Выбери, что ты хочешь сделать"))
@@ -406,7 +411,7 @@ class ManageCharactersTextCommandTestCase(TelegramBotTestCase):
 @patch("telebot.TeleBot.edit_message_reply_markup")
 class DailySubscriptionCallbackTestCase(TelegramBotTestCase):
     def test_subscribe(self, mocked_send_message: Mock):
-        self.client.post(reverse("tg_bot_webhook"), data=self.create_user_callback_query_data("en_daily_sub"))
+        self.make_asserted_bot_request(self.create_user_callback_query_data("en_daily_sub"))
         mocked_send_message.assert_called_once()
         called_args, called_kwargs = mocked_send_message.call_args
         self.assertTupleEqual(called_args, (self.chat["id"], self.bot_message_id))
@@ -415,7 +420,7 @@ class DailySubscriptionCallbackTestCase(TelegramBotTestCase):
 
     def test_unsubscribe(self, mocked_send_message: Mock):
         User.objects.create(chat_id=self.chat["id"], is_subscribed=True)
-        self.client.post(reverse("tg_bot_webhook"), data=self.create_user_callback_query_data("dis_daily_sub"))
+        self.make_asserted_bot_request(self.create_user_callback_query_data("dis_daily_sub"))
         mocked_send_message.assert_called_once()
         called_args, called_kwargs = mocked_send_message.call_args
         self.assertTupleEqual(called_args, (self.chat["id"], self.bot_message_id))
@@ -427,7 +432,7 @@ class DailySubscriptionCallbackTestCase(TelegramBotTestCase):
 class HandlerFailedTestCase(TelegramBotTestCase):
     def test_log_called(self, mocked_logger_error: Mock):
         with patch("telebot.TeleBot.process_new_updates", side_effect=Exception):
-            response = self.client.post(reverse("tg_bot_webhook"), data={"test": "test"})
+            response = self.make_asserted_bot_request({"test": "test"})
 
         self.assertEqual(response.status_code, 200)
         mocked_logger_error.assert_called_once()
@@ -437,7 +442,13 @@ class HandlerFailedTestCase(TelegramBotTestCase):
 @override_settings(TELEGRAM_BOT_SECRET_TOKEN="test-secret-token")
 @patch("telebot.TeleBot.set_webhook")
 class SetWebhookTestCase(TestCase):
+    def setUp(self) -> None:
+        self.admin_user = DjangoUser.objects.create(username="test-admin", email="test@test.com", is_staff=True)
+        self.admin_user.set_password("test-password")
+        self.admin_user.save()
+
     def test_bot_called(self, mocked_set_webhook: Mock):
+        self.assertTrue(self.client.login(username=self.admin_user.username, password="test-password"))
         response = self.client.get(reverse("set_webhook"))
         self.assertEqual(response.status_code, 200)
         mocked_set_webhook.assert_called_once()
@@ -445,3 +456,8 @@ class SetWebhookTestCase(TestCase):
         self.assertTupleEqual(called_args, ())
         self.assertEqual(called_kwargs["url"], "https://test.com/tg_bot/webhook")
         self.assertEqual(called_kwargs["secret_token"], "test-secret-token")
+
+    def test_login_required(self, mocked_set_webhook: Mock):
+        response = self.client.get(reverse("set_webhook"))
+        self.assertEqual(response.status_code, 302)
+        mocked_set_webhook.assert_not_called()
