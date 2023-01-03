@@ -1,0 +1,29 @@
+[run]
+branch = True
+omit =
+    */tests.py
+    manage.py
+    */management/*
+    venv/*
+    */migrations/*
+
+source_pkgs =
+    tg_bot
+
+[report]
+omit =
+    */tests.py
+    manage.py
+    */management/*
+    venv/*
+    */migrations/*
+
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    if self.debug:
+    if settings.DEBUG
+    raise AssertionError
+    raise NotImplementedError
+    if 0:
+    if __name__ == .__main__.:

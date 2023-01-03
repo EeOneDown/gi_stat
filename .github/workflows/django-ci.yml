@@ -39,4 +39,7 @@ jobs:
         python manage.py migrate
     - name: Run tests
       run: |
-        python manage.py test
+        coverage run manage.py test
+    - name: Run coverage report
+      run: |
+        coverage report --fail-under=70
