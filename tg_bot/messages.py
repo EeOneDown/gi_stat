@@ -58,7 +58,7 @@ class BotMessages:
             for region_name, region_g_user_characters in groupby(day_g_user_characters, key_region_name):
                 text += f"<b>{region_name}</b>: {', '.join(map(cls.format_user_character, region_g_user_characters))}\n"
             text += "\n"
-        return text
+        return text.strip()
 
     @classmethod
     def create_bosses_message(cls, user_characters: Iterable[UserCharacter]) -> str:

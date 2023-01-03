@@ -255,10 +255,53 @@ class WeeklyBossesTextCommandTestCase(TelegramBotTestCase):
         self.client.post(reverse("tg_bot_webhook"), data=self.create_user_text_message_data("Боссы"))
         mocked_send_message.assert_called_once()
         called_args, called_kwargs = mocked_send_message.call_args
+        good_text = "<u><b>wb1</b></u>: c_ws_d2_wb1\n\n<u><b>wb3</b></u>: c_a_d2_wb3\n\n<u><b>wb4</b></u>: c_a_d3_wb4"
+        self.assertTupleEqual(called_args, (self.chat["id"], good_text))
+        self.assertKeyboard(
+            called_kwargs["reply_markup"], [["Неделя", "Сегодня", "Боссы"], ["Рассылка", "Управлять персонажами"]]
+        )
+
+
+@override_settings(TELEGRAM_BOT_SECRET_TOKEN="test-token")
+@patch("telebot.TeleBot.send_message")
+class WeekTextCommandTestCase(TelegramBotTestCase):
+    def test_no_farm(self, mocked_send_message: Mock):
+        self.client.post(reverse("tg_bot_webhook"), data=self.create_user_text_message_data("Неделя"))
+        mocked_send_message.assert_called_once()
+        called_args, called_kwargs = mocked_send_message.call_args
+        self.assertTupleEqual(
+            called_args,
+            (self.chat["id"], "Некого фармить. Если кого-то упустил, настрой в: <code>Управлять персонажами</code>"),
+        )
+        self.assertKeyboard(
+            called_kwargs["reply_markup"], [["Неделя", "Сегодня", "Боссы"], ["Рассылка", "Управлять персонажами"]]
+        )
+
+    def test_valid_message(self, mocked_send_message: Mock):
+        self.populate_test_data()
+
+        user = User.objects.create(chat_id=self.chat["id"])
+        user.characters.set(
+            Character.objects.filter(
+                name__in=["c_mt_d1_wb1", "c_tf_d1_wb1", "c_ws_d2_wb1", "c_a_d2_wb1", "c_a_d3_wb4"]
+            ).all(),
+            through_defaults={},
+        )
+        self.assertEqual(user.characters.all().count(), 5)
+
+        self.client.post(reverse("tg_bot_webhook"), data=self.create_user_text_message_data("Неделя"))
+        mocked_send_message.assert_called_once()
+        called_args, called_kwargs = mocked_send_message.call_args
         good_text = (
-            "<u><b>wb1</b></u>: c_ws_d2_wb1\n\n"
-            "<u><b>wb3</b></u>: c_a_d2_wb3\n\n"
-            "<u><b>wb4</b></u>: c_a_d3_wb4"
+            "<u>Всегда</u>\n"
+            "<b>r2</b>: c_a_d2_wb1\n"
+            "<b>r3</b>: c_a_d3_wb4\n\n"
+            "<u>Понедельник/Четверг</u>\n"
+            "<b>r1</b>: c_mt_d1_wb1\n\n"
+            "<u>Вторник/Пятница</u>\n"
+            "<b>r1</b>: c_tf_d1_wb1\n\n"
+            "<u>Среда/Суббота</u>\n"
+            "<b>r2</b>: c_ws_d2_wb1"
         )
         self.assertTupleEqual(called_args, (self.chat["id"], good_text))
         self.assertKeyboard(
