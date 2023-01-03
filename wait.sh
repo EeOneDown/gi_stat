@@ -6,8 +6,9 @@ while ! nc -z gi_stat_app_db 3306 ; do
 done
 
 python manage.py migrate
-#python manage.py clear_data
-#python manage.py populate_data
 python manage.py runserver 0.0.0.0:8000
+
 # docker exec -it gi-stat-app /bin/sh
 # python manage.py createsuperuser
+# python manage.py clear_data
+# python manage.py populate_data
