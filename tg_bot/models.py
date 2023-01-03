@@ -48,6 +48,27 @@ class Character(models.Model):
     def __str__(self):
         return self.name
 
+    @classmethod
+    def get_for_today(cls, days: list[int]) -> "Character.objects":
+        return (
+            cls.objects.filter(talent_days__in=days)
+            .select_related("talent_domain__region")
+            .order_by("talent_domain__region_id")
+            .all()
+        )
+
+    @classmethod
+    def get_for_week(cls) -> "Character.objects":
+        return (
+            cls.objects.select_related("talent_domain__region")
+            .order_by("talent_days", "talent_domain__region_id")
+            .all()
+        )
+
+    @classmethod
+    def get_for_weekly_bosses(cls) -> "Character.objects":
+        return cls.objects.select_related("weekly_boss").order_by("weekly_boss_id").all()
+
 
 class User(models.Model):
     chat_id = models.BigIntegerField(unique=True)
@@ -61,3 +82,30 @@ class UserCharacter(models.Model):
     normal_attack = models.PositiveSmallIntegerField(default=0)
     elemental_skill = models.PositiveSmallIntegerField(default=0)
     elemental_burst = models.PositiveSmallIntegerField(default=0)
+
+    @classmethod
+    def get_for_today(cls, chat_id: int, days: list[int]) -> "UserCharacter.objects":
+        return (
+            cls.objects.filter(user__chat_id=chat_id, character__talent_days__in=days)
+            .select_related("character__talent_domain__region")
+            .order_by("character__talent_domain__region_id")
+            .all()
+        )
+
+    @classmethod
+    def get_for_week(cls, chat_id: int) -> "UserCharacter.objects":
+        return (
+            UserCharacter.objects.filter(user__chat_id=chat_id)
+            .select_related("character__talent_domain__region")
+            .order_by("character__talent_days", "character__talent_domain__region_id")
+            .all()
+        )
+
+    @classmethod
+    def get_for_weekly_bosses(cls, chat_id: int) -> "UserCharacter.objects":
+        return (
+            UserCharacter.objects.filter(user__chat_id=chat_id)
+            .select_related("character__weekly_boss")
+            .order_by("character__weekly_boss_id")
+            .all()
+        )

@@ -31,40 +31,23 @@ def bot_command_start(message: Message) -> None:
 @bot.message_handler(func=BotTextCommands.TODAY.as_func())
 def bot_text_command_today(message: Message) -> None:
     days = Days.get_by_weekday(timezone.now().weekday())
-    user_characters = (
-        UserCharacter.objects.filter(user__chat_id=message.chat.id, character__talent_days__in=days)
-        .select_related("character__talent_domain__region")
-        # order by region for in-code 'group by'
-        .order_by("character__talent_domain__region_id")
-        .all()
-    )
+    user_characters = UserCharacter.get_for_today(message.chat.id, days)
     text = BotMessages.create_today_message(user_characters)
-    bot.send_message(message.chat.id, text, reply_markup=BotKeyboards.MAIN_MENU)
+    bot.send_message(message.chat.id, text, reply_markup=BotKeyboards.INLINE_SHOW_ALL_TODAY)
 
 
 @bot.message_handler(func=BotTextCommands.WEEK.as_func())
 def bot_text_command_week(message: Message) -> None:
-    user_characters = (
-        UserCharacter.objects.filter(user__chat_id=message.chat.id)
-        .select_related("character__talent_domain__region")
-        # order by region for in-code 'group by'
-        .order_by("character__talent_days", "character__talent_domain__region_id")
-        .all()
-    )
+    user_characters = UserCharacter.get_for_week(message.chat.id)
     text = BotMessages.create_week_message(user_characters)
-    bot.send_message(message.chat.id, text, reply_markup=BotKeyboards.MAIN_MENU)
+    bot.send_message(message.chat.id, text, reply_markup=BotKeyboards.INLINE_SHOW_ALL_WEEK)
 
 
 @bot.message_handler(func=BotTextCommands.WEEKLY_BOSSES.as_func())
 def bot_text_command_weekly_bosses(message: Message) -> None:
-    user_characters = (
-        UserCharacter.objects.filter(user__chat_id=message.chat.id)
-        .select_related("character__weekly_boss")
-        .order_by("character__weekly_boss_id")  # order by region for the next 'group by'
-        .all()
-    )
-    text = BotMessages.create_bosses_message(user_characters)
-    bot.send_message(message.chat.id, text, reply_markup=BotKeyboards.MAIN_MENU)
+    user_characters = UserCharacter.get_for_weekly_bosses(message.chat.id)
+    text = BotMessages.create_weekly_bosses_message(user_characters)
+    bot.send_message(message.chat.id, text, reply_markup=BotKeyboards.INLINE_SHOW_ALL_WEEKLY_BOSSES)
 
 
 @bot.message_handler(func=BotTextCommands.DAILY_SUBSCRIPTION.as_func())
@@ -176,3 +159,25 @@ def bot_callback_daily_subscription(callback: CallbackQuery) -> None:
 
     keyboard = BotKeyboards.create_inline_change_daily_subscription_keyboard(user)
     bot.edit_message_reply_markup(user.chat_id, callback.message.id, reply_markup=keyboard)
+
+
+@bot.callback_query_handler(func=BotCallbackCommands.SHOW_ALL_TODAY.as_func())
+def bot_callback_show_all_today(callback: CallbackQuery) -> None:
+    bot.edit_message_reply_markup(callback.message.chat.id, callback.message.id, reply_markup=None)
+    days = Days.get_by_weekday(timezone.now().weekday())
+    characters = Character.get_for_today(days)
+    bot.send_message(callback.message.chat.id, BotMessages.create_all_today_message(characters))
+
+
+@bot.callback_query_handler(func=BotCallbackCommands.SHOW_ALL_WEEK.as_func())
+def bot_callback_show_all_week(callback: CallbackQuery) -> None:
+    bot.edit_message_reply_markup(callback.message.chat.id, callback.message.id, reply_markup=None)
+    characters = Character.get_for_week()
+    bot.send_message(callback.message.chat.id, BotMessages.create_all_week_message(characters))
+
+
+@bot.callback_query_handler(func=BotCallbackCommands.SHOW_ALL_WEEKLY_BOSSES.as_func())
+def bot_callback_show_all_weekly_bosses(callback: CallbackQuery) -> None:
+    bot.edit_message_reply_markup(callback.message.chat.id, callback.message.id, reply_markup=None)
+    characters = Character.get_for_weekly_bosses()
+    bot.send_message(callback.message.chat.id, BotMessages.create_all_weekly_bosses_message(characters))

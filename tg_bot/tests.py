@@ -231,9 +231,7 @@ class TodayTextCommandTestCase(TelegramBotTestCase):
             called_args,
             (self.chat["id"], "Некого фармить. Если кого-то упустил, настрой в: <code>Управлять персонажами</code>"),
         )
-        self.assertKeyboard(
-            called_kwargs["reply_markup"], [["Неделя", "Сегодня", "Боссы"], ["Рассылка", "Управлять персонажами"]]
-        )
+        self.assertInlineKeyboard(called_kwargs["reply_markup"], [[("Показать всех", "show_all_today")]])
 
     @patch("django.utils.timezone.now", lambda: datetime(2023, 1, 3))
     def test_valid_message__tuesday(self, mocked_send_message: Mock):
@@ -258,9 +256,7 @@ class TodayTextCommandTestCase(TelegramBotTestCase):
             "<b>r3</b>: c_a_d3_wb4 <i>(1, 1, 1)</i>"
         )
         self.assertTupleEqual(called_args, (self.chat["id"], good_text))
-        self.assertKeyboard(
-            called_kwargs["reply_markup"], [["Неделя", "Сегодня", "Боссы"], ["Рассылка", "Управлять персонажами"]]
-        )
+        self.assertInlineKeyboard(called_kwargs["reply_markup"], [[("Показать всех", "show_all_today")]])
 
     @patch("django.utils.timezone.now", lambda: datetime(2023, 1, 1))
     def test_valid_message__sunday(self, mocked_send_message: Mock):
@@ -284,9 +280,7 @@ class TodayTextCommandTestCase(TelegramBotTestCase):
             "<b>r4</b>: c_a_d4_wb1 <i>(1, 1, 1)</i>"
         )
         self.assertTupleEqual(called_args, (self.chat["id"], good_text))
-        self.assertKeyboard(
-            called_kwargs["reply_markup"], [["Неделя", "Сегодня", "Боссы"], ["Рассылка", "Управлять персонажами"]]
-        )
+        self.assertInlineKeyboard(called_kwargs["reply_markup"], [[("Показать всех", "show_all_today")]])
 
 
 @patch("telebot.TeleBot.send_message")
@@ -299,9 +293,7 @@ class WeeklyBossesTextCommandTestCase(TelegramBotTestCase):
             called_args,
             (self.chat["id"], "Некого фармить. Если кого-то упустил, настрой в: <code>Управлять персонажами</code>"),
         )
-        self.assertKeyboard(
-            called_kwargs["reply_markup"], [["Неделя", "Сегодня", "Боссы"], ["Рассылка", "Управлять персонажами"]]
-        )
+        self.assertInlineKeyboard(called_kwargs["reply_markup"], [[("Показать всех", "show_all_wb")]])
 
     def test_valid_message(self, mocked_send_message: Mock):
         self.populate_test_data()
@@ -318,9 +310,7 @@ class WeeklyBossesTextCommandTestCase(TelegramBotTestCase):
         called_args, called_kwargs = mocked_send_message.call_args
         good_text = "<u><b>wb1</b></u>: c_ws_d2_wb1\n\n<u><b>wb3</b></u>: c_a_d2_wb3\n\n<u><b>wb4</b></u>: c_a_d3_wb4"
         self.assertTupleEqual(called_args, (self.chat["id"], good_text))
-        self.assertKeyboard(
-            called_kwargs["reply_markup"], [["Неделя", "Сегодня", "Боссы"], ["Рассылка", "Управлять персонажами"]]
-        )
+        self.assertInlineKeyboard(called_kwargs["reply_markup"], [[("Показать всех", "show_all_wb")]])
 
 
 @patch("telebot.TeleBot.send_message")
@@ -333,9 +323,7 @@ class WeekTextCommandTestCase(TelegramBotTestCase):
             called_args,
             (self.chat["id"], "Некого фармить. Если кого-то упустил, настрой в: <code>Управлять персонажами</code>"),
         )
-        self.assertKeyboard(
-            called_kwargs["reply_markup"], [["Неделя", "Сегодня", "Боссы"], ["Рассылка", "Управлять персонажами"]]
-        )
+        self.assertInlineKeyboard(called_kwargs["reply_markup"], [[("Показать всех", "show_all_week")]])
 
     def test_valid_message(self, mocked_send_message: Mock):
         self.populate_test_data()
@@ -364,9 +352,7 @@ class WeekTextCommandTestCase(TelegramBotTestCase):
             "<b>r2</b>: c_ws_d2_wb1"
         )
         self.assertTupleEqual(called_args, (self.chat["id"], good_text))
-        self.assertKeyboard(
-            called_kwargs["reply_markup"], [["Неделя", "Сегодня", "Боссы"], ["Рассылка", "Управлять персонажами"]]
-        )
+        self.assertInlineKeyboard(called_kwargs["reply_markup"], [[("Показать всех", "show_all_week")]])
 
 
 @patch("telebot.TeleBot.send_message")

@@ -18,6 +18,12 @@ class BotKeyboards:
         .row(BotTextCommands.BACK)
     )
 
+    INLINE_SHOW_ALL_TODAY = InlineKeyboardMarkup().row(BotCallbackCommands.SHOW_ALL_TODAY.as_inline_button())
+    INLINE_SHOW_ALL_WEEK = InlineKeyboardMarkup().row(BotCallbackCommands.SHOW_ALL_WEEK.as_inline_button())
+    INLINE_SHOW_ALL_WEEKLY_BOSSES = InlineKeyboardMarkup().row(
+        BotCallbackCommands.SHOW_ALL_WEEKLY_BOSSES.as_inline_button()
+    )
+
     @staticmethod
     def create_follow_characters_keyboard(characters: Iterable[Character]) -> ReplyKeyboardMarkup:
         keyboard = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False)

@@ -44,3 +44,6 @@ class BotCallbackCommands:
 
     SUBSCRIBE_DAILY = _("Включить", "en_daily_sub")
     UNSUBSCRIBE_DAILY = _("Отключить", "dis_daily_sub")
+    SHOW_ALL_TODAY = _("Показать всех", "show_all_today")
+    SHOW_ALL_WEEK = _("Показать всех", "show_all_week")
+    SHOW_ALL_WEEKLY_BOSSES = _("Показать всех", "show_all_wb")

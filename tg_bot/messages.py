@@ -28,18 +28,20 @@ class BotMessages:
 
     @classmethod
     def create_today_message(cls, user_characters: Iterable[UserCharacter]) -> str:
-        def key(user_character: UserCharacter) -> str:
+        def key_region_name(user_character: UserCharacter) -> str:
             return user_character.character.talent_domain.region.name
 
         if not user_characters:
             return cls.NO_FARM
 
-        day_label = cls.WEEKDAY_LABELS[timezone.now().weekday()]
+        return cls.format_today_template(user_characters, key_region_name, cls.format_user_character)
 
-        return f"<u>{day_label}</u>\n" + "\n\n".join(
-            f"<b>{region_name}</b>: {', '.join(map(cls.format_user_character, g_user_characters))}"
-            for region_name, g_user_characters in groupby(user_characters, key)
-        )
+    @classmethod
+    def create_all_today_message(cls, characters: Iterable[Character]) -> str:
+        def key_region_name(character: Character) -> str:
+            return character.talent_domain.region.name
+
+        return cls.format_today_template(characters, key_region_name, cls.format_character)
 
     @classmethod
     def create_week_message(cls, user_characters: Iterable[UserCharacter]) -> str:
@@ -52,26 +54,34 @@ class BotMessages:
         if not user_characters:
             return cls.NO_FARM
 
-        text = ""
-        for day, day_g_user_characters in groupby(user_characters, key_talent_days):
-            text += f"<u>{dict(Days.choices)[day]}</u>\n"
-            for region_name, region_g_user_characters in groupby(day_g_user_characters, key_region_name):
-                text += f"<b>{region_name}</b>: {', '.join(map(cls.format_user_character, region_g_user_characters))}\n"
-            text += "\n"
-        return text.strip()
+        return cls.format_week_template(user_characters, key_talent_days, key_region_name, cls.format_user_character)
 
     @classmethod
-    def create_bosses_message(cls, user_characters: Iterable[UserCharacter]) -> str:
-        def key(user_character: UserCharacter) -> str:
+    def create_all_week_message(cls, characters: Iterable[Character]) -> str:
+        def key_talent_days(character: Character) -> int:
+            return character.talent_days
+
+        def key_region_name(character: Character) -> str:
+            return character.talent_domain.region.name
+
+        return cls.format_week_template(characters, key_talent_days, key_region_name, cls.format_character)
+
+    @classmethod
+    def create_weekly_bosses_message(cls, user_characters: Iterable[UserCharacter]) -> str:
+        def key_weekly_boss_name(user_character: UserCharacter) -> str:
             return user_character.character.weekly_boss.name
 
         if not user_characters:
             return cls.NO_FARM
 
-        return "\n\n".join(
-            f"<u><b>{weekly_boss_name}</b></u>: {', '.join(map(cls.format_user_character, g_user_characters))}"
-            for weekly_boss_name, g_user_characters in groupby(user_characters, key)
-        )
+        return cls.format_weekly_bosses_template(user_characters, key_weekly_boss_name, cls.format_user_character)
+
+    @classmethod
+    def create_all_weekly_bosses_message(cls, characters: Iterable[Character]) -> str:
+        def key_weekly_boss_name(character: Character) -> str:
+            return character.weekly_boss.name
+
+        return cls.format_weekly_bosses_template(characters, key_weekly_boss_name, cls.format_character)
 
     @classmethod
     def create_character_list_message(cls, user_characters: Iterable[UserCharacter]) -> str:
@@ -86,7 +96,7 @@ class BotMessages:
 
     @classmethod
     def create_successfully_unfollow_character_message(cls, character: Character) -> str:
-        return f"<s>{character.name}</s> больше не в списке твоих персонажей"
+        return f"<s>{cls.format_character(character)}</s> больше не в списке твоих персонажей"
 
     @classmethod
     def create_successfully_updated_character_talents_message(cls, user_character: UserCharacter) -> str:
@@ -103,6 +113,41 @@ class BotMessages:
             f" <i>({user_character.normal_attack},"
             f" {user_character.elemental_skill},"
             f" {user_character.elemental_burst})</i>"
+        )
+
+    @staticmethod
+    def format_character(character: Character) -> str:
+        return character.name
+
+    @classmethod
+    def format_today_template(
+        cls, characters: Iterable[object], key_region_name: callable, format_character: callable
+    ) -> str:
+        day_label = cls.WEEKDAY_LABELS[timezone.now().weekday()]
+        return f"<u>{day_label}</u>\n" + "\n\n".join(
+            f"<b>{region_name}</b>: {', '.join(map(format_character, g_characters))}"
+            for region_name, g_characters in groupby(characters, key_region_name)
+        )
+
+    @staticmethod
+    def format_week_template(
+        characters: Iterable[object], key_talent_days: callable, key_region_name: callable, format_character: callable
+    ) -> str:
+        text = ""
+        for day, day_g_characters in groupby(characters, key_talent_days):
+            text += f"<u>{dict(Days.choices)[day]}</u>\n"
+            for region_name, region_g_characters in groupby(day_g_characters, key_region_name):
+                text += f"<b>{region_name}</b>: {', '.join(map(format_character, region_g_characters))}\n"
+            text += "\n"
+        return text.strip()
+
+    @staticmethod
+    def format_weekly_bosses_template(
+        characters: Iterable[object], key_weekly_boss_name: callable, format_character: callable
+    ) -> str:
+        return "\n\n".join(
+            f"<u><b>{weekly_boss_name}</b></u>: {', '.join(map(format_character, g_characters))}"
+            for weekly_boss_name, g_characters in groupby(characters, key_weekly_boss_name)
         )
 
 
