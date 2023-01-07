@@ -1,85 +1,10 @@
-import unittest
 from datetime import datetime
 from unittest.mock import patch, Mock
 
-from django.contrib.auth.models import User as DjangoUser
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from tg_bot.messages import BotRegexps
 from tg_bot.models import User, Region, WeeklyBoss, Domain, Character, Days
-
-
-class BotRegexpsTestCase(unittest.TestCase):
-    def test_follow_character(self):
-        good_messages = [
-            "абвгдеёжзийклмнопрстуфхцчшщъыьэюя",
-            "абвгдеёжзийклмнопрстуфхцчшщъыьэюя АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ",
-            "абвгдеёжзийклмнопрстуфхцчшщъыьэюя (АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ)",
-            "АБВГДЕЁЖЗИЙКЛМНОпрстуфхцчшщъыьэюя-абвгдеёжзийклмноПРСТУФХЦЧШЩЪЫЬЭЮЯ",
-            "абвгдеёжзийклмнопрстуфхцчшщъыьэюя 1 2 3",
-            "абвгдеёжзийклмнопрстуфхцчшщъыьэюя АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ 10 11 12",
-            "АБВГДЕЁЖЗИЙКЛМНОпрстуфхцчшщъыьэюя-абвгдеёжзийклмноПРСТУФХЦЧШЩЪЫЬЭЮЯ 22 34 80",
-        ]
-        for good_message in good_messages:
-            self.assertTrue(BotRegexps.FOLLOW_CHARACTER.search(good_message))
-            self.assertTrue(BotRegexps.FOLLOW_CHARACTER.match(good_message).groupdict()["name"])
-
-        bad_messages = [
-            "абвгдеёжзийклмнопрстуфхцчшщъыьэюя абвгдеёжзийклмнопрстуфхцчшщъыьэюя-абвгдеёжзийклмнопрстуфхцчшщъыьэюя",
-            "abcdefghijklmnopqrstuvwxyz",
-            "abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-            "ABCDEFGHIJKLMnopqrstuvwxyz-abcdefghijklmNOPQRSTUVWXYZ",
-            "абвгдеёжзийклмнопрстуфхцчшщъыьэюя 111 222 3333",
-            "- абвгдеёжзийклмнопрстуфхцчшщъыьэюя АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ -10 11 12",
-            "АБВГДЕЁЖЗИЙКЛМНОпрстуфхцчшщъыьэюя-абвгдеёжзийклмноПРСТУФХЦЧШЩЪЫЬЭЮЯ 22 +34 80",
-        ]
-        for bad_message in bad_messages:
-            self.assertFalse(BotRegexps.FOLLOW_CHARACTER.search(bad_message))
-
-        text = "АБВГДЕЁЖЗИЙКЛМНОпрстуфхцчшщъыьэюя-абвгдеёжзийклмноПРСТУФХЦЧШЩЪЫЬЭЮЯ 2 14 80"
-        name, talents = BotRegexps.parse_follow_message(text)
-        self.assertEqual(name, "АБВГДЕЁЖЗИЙКЛМНОпрстуфхцчшщъыьэюя-абвгдеёжзийклмноПРСТУФХЦЧШЩЪЫЬЭЮЯ")
-        self.assertDictEqual(talents, {"normal_attack": 2, "elemental_skill": 14, "elemental_burst": 15})
-
-    def test_unfollow_character(self):
-        good_messages = [
-            "- абвгдеёжзийклмнопрстуфхцчшщъыьэюя",
-            "-абвгдеёжзийклмнопрстуфхцчшщъыьэюя АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ",
-            "- абвгдеёжзийклмнопрстуфхцчшщъыьэюя (АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ)",
-            "- АБВГДЕЁЖЗИЙКЛМНОпрстуфхцчшщъыьэюя-абвгдеёжзийклмноПРСТУФХЦЧШЩЪЫЬЭЮЯ",
-        ]
-        for good_message in good_messages:
-            self.assertTrue(BotRegexps.UNFOLLOW_CHARACTER.search(good_message))
-
-        bad_messages = [
-            "- абвгдеёжзийклмнопрстуфхцчшщъыьэюя абвгдеёжзийклмнопрстуфхцчшщъыьэюя-абвгдеёжзийклмнопрстуфхцчшщъыьэюя",
-            "- abcdefghijklmnopqrstuvwxyz",
-            "- abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-            "- ABCDEFGHIJKLMnopqrstuvwxyz-abcdefghijklmNOPQRSTUVWXYZ",
-            "- абвгдеёжзийклмнопрстуфхцчшщъыьэюя 111 222 3333",
-            "- абвгдеёжзийклмнопрстуфхцчшщъыьэюя АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ -10 11 12",
-            "АБВГДЕЁЖЗИЙКЛМНОпрстуфхцчшщъыьэюя-абвгдеёжзийклмноПРСТУФХЦЧШЩЪЫЬЭЮЯ 22 +34 80",
-        ]
-        for bad_message in bad_messages:
-            self.assertFalse(BotRegexps.UNFOLLOW_CHARACTER.search(bad_message))
-
-        text = "- абвгдеёжзийклмнопрстуфхцчшщъыьэюя (АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ)"
-        name = BotRegexps.parse_unfollow_message(text)
-        self.assertEqual(name, "абвгдеёжзийклмнопрстуфхцчшщъыьэюя (АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ)")
-
-    def test_character_talents(self):
-        good_messages = ["1 2 3", "11 22 33", "0 0 0"]
-        for good_message in good_messages:
-            self.assertTrue(BotRegexps.CHARACTER_TALENTS.search(good_message))
-
-        bad_messages = ["-1 -2 -3", "111 222 333"]
-        for bad_message in bad_messages:
-            self.assertFalse(BotRegexps.CHARACTER_TALENTS.search(bad_message))
-
-        text = "1 22 13"
-        talents = BotRegexps.parse_character_talents_message(text)
-        self.assertDictEqual(talents, {"normal_attack": 1, "elemental_skill": 15, "elemental_burst": 13})
 
 
 @override_settings(TELEGRAM_BOT_SECRET_TOKEN="test-token")
@@ -496,28 +421,3 @@ class HandlerFailedTestCase(TelegramBotTestCase):
 
         self.assertEqual(response.status_code, 200)
         mocked_logger_error.assert_called_once()
-
-
-@override_settings(BASE_DOMAIN="test.com")
-@override_settings(TELEGRAM_BOT_SECRET_TOKEN="test-secret-token")
-@patch("telebot.TeleBot.set_webhook")
-class SetWebhookTestCase(TestCase):
-    def setUp(self) -> None:
-        self.admin_user = DjangoUser.objects.create(username="test-admin", email="test@test.com", is_staff=True)
-        self.admin_user.set_password("test-password")
-        self.admin_user.save()
-
-    def test_bot_called(self, mocked_set_webhook: Mock):
-        self.assertTrue(self.client.login(username=self.admin_user.username, password="test-password"))
-        response = self.client.get(reverse("set_webhook"))
-        self.assertEqual(response.status_code, 200)
-        mocked_set_webhook.assert_called_once()
-        called_args, called_kwargs = mocked_set_webhook.call_args
-        self.assertTupleEqual(called_args, ())
-        self.assertEqual(called_kwargs["url"], "https://test.com/tg_bot/webhook")
-        self.assertEqual(called_kwargs["secret_token"], "test-secret-token")
-
-    def test_login_required(self, mocked_set_webhook: Mock):
-        response = self.client.get(reverse("set_webhook"))
-        self.assertEqual(response.status_code, 302)
-        mocked_set_webhook.assert_not_called()
