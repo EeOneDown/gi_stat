@@ -152,9 +152,12 @@ class BotMessages:
 
 
 class BotRegexps:
-    FOLLOW_CHARACTER = re.compile(r"^(?P<name>[а-яА-Я]+(?:[ -][а-яА-Я()]+)?)(?P<talents>(?: \d\d?){3})?$")
-    UNFOLLOW_CHARACTER = re.compile(r"^- ?(?P<name>[а-яА-Я]+(?: [а-яА-Я]+)?)$")
-    CHARACTER_TALENTS = re.compile(r"^\d\d? \d\d? \d\d?$")
+    _CHARACTER_NAME = r"[а-яА-ЯёЁ]+(?:[ -][а-яА-ЯёЁ()]+)?"
+    _CHARACTER_TALENTS = r"\d\d? \d\d? \d\d?"
+
+    FOLLOW_CHARACTER = re.compile(f"^(?P<name>{_CHARACTER_NAME})(?P<talents> {_CHARACTER_TALENTS})?$")
+    UNFOLLOW_CHARACTER = re.compile(f"^- ?(?P<name>{_CHARACTER_NAME})$")
+    CHARACTER_TALENTS = re.compile(f"^{_CHARACTER_TALENTS}$")
 
     @classmethod
     def parse_follow_message(cls, text: str) -> tuple[str, dict[str, int]]:
