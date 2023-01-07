@@ -1,7 +1,7 @@
 [run]
 branch = True
 omit =
-    */tests.py
+    */tests/*
     manage.py
     */management/*
     venv/*
@@ -12,7 +12,7 @@ source_pkgs =
 
 [report]
 omit =
-    */tests.py
+    */tests/*
     manage.py
     */management/*
     venv/*
