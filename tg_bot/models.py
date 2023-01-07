@@ -49,8 +49,8 @@ class Character(models.Model):
         return self.name
 
     @classmethod
-    def get_for_today(cls, days: list[int]) -> "Character.objects":
-        return (
+    def get_for_today(cls, days: list[int]) -> list["Character"]:
+        return list(
             cls.objects.filter(talent_days__in=days)
             .select_related("talent_domain__region")
             .order_by("talent_domain__region_id")
@@ -58,16 +58,16 @@ class Character(models.Model):
         )
 
     @classmethod
-    def get_for_week(cls) -> "Character.objects":
-        return (
+    def get_for_week(cls) -> list["Character"]:
+        return list(
             cls.objects.select_related("talent_domain__region")
             .order_by("talent_days", "talent_domain__region_id")
             .all()
         )
 
     @classmethod
-    def get_for_weekly_bosses(cls) -> "Character.objects":
-        return cls.objects.select_related("weekly_boss").order_by("weekly_boss_id").all()
+    def get_for_weekly_bosses(cls) -> list["Character"]:
+        return list(cls.objects.select_related("weekly_boss").order_by("weekly_boss_id").all())
 
 
 class User(models.Model):
@@ -84,8 +84,8 @@ class UserCharacter(models.Model):
     elemental_burst = models.PositiveSmallIntegerField(default=0)
 
     @classmethod
-    def get_for_today(cls, chat_id: int, days: list[int]) -> "UserCharacter.objects":
-        return (
+    def get_for_today(cls, chat_id: int, days: list[int]) -> list["UserCharacter"]:
+        return list(
             cls.objects.filter(user__chat_id=chat_id, character__talent_days__in=days)
             .select_related("character__talent_domain__region")
             .order_by("character__talent_domain__region_id")
@@ -93,8 +93,8 @@ class UserCharacter(models.Model):
         )
 
     @classmethod
-    def get_for_week(cls, chat_id: int) -> "UserCharacter.objects":
-        return (
+    def get_for_week(cls, chat_id: int) -> list["UserCharacter"]:
+        return list(
             UserCharacter.objects.filter(user__chat_id=chat_id)
             .select_related("character__talent_domain__region")
             .order_by("character__talent_days", "character__talent_domain__region_id")
@@ -102,10 +102,20 @@ class UserCharacter(models.Model):
         )
 
     @classmethod
-    def get_for_weekly_bosses(cls, chat_id: int) -> "UserCharacter.objects":
-        return (
+    def get_for_weekly_bosses(cls, chat_id: int) -> list["UserCharacter"]:
+        return list(
             UserCharacter.objects.filter(user__chat_id=chat_id)
             .select_related("character__weekly_boss")
             .order_by("character__weekly_boss_id")
+            .all()
+        )
+
+    @classmethod
+    def get_for_daily_dispatch(cls, days: list[int]) -> list["UserCharacter"]:
+        return list(
+            cls.objects.filter(user__is_subscribed=True, character__talent_days__in=days)
+            .select_related("user", "character__talent_domain__region")
+            # order by region for in-code 'group by'
+            .order_by("user_id", "character__talent_domain__region_id")
             .all()
         )

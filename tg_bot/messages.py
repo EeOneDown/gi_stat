@@ -27,64 +27,66 @@ class BotMessages:
     EMPTY_CHARACTER_LIST = "Твой список персонажей <u>пуст</u>"
 
     @classmethod
-    def create_today_message(cls, user_characters: Iterable[UserCharacter]) -> str:
-        def key_region_name(user_character: UserCharacter) -> str:
-            return user_character.character.talent_domain.region.name
-
+    def create_today_message(cls, user_characters: list[UserCharacter]) -> str:
         if not user_characters:
             return cls.NO_FARM
 
-        return cls.format_today_template(user_characters, key_region_name, cls.format_user_character)
+        return cls.format_today_template(
+            characters=user_characters,
+            format_character=cls.format_user_character,
+            key_region_name=lambda user_character: user_character.character.talent_domain.region.name,
+        )
 
     @classmethod
-    def create_all_today_message(cls, characters: Iterable[Character]) -> str:
-        def key_region_name(character: Character) -> str:
-            return character.talent_domain.region.name
-
-        return cls.format_today_template(characters, key_region_name, cls.format_character)
+    def create_all_today_message(cls, characters: list[Character]) -> str:
+        return cls.format_today_template(
+            characters=characters,
+            format_character=cls.format_character,
+            key_region_name=lambda character: character.talent_domain.region.name,
+        )
 
     @classmethod
-    def create_week_message(cls, user_characters: Iterable[UserCharacter]) -> str:
-        def key_talent_days(user_character: UserCharacter) -> int:
-            return user_character.character.talent_days
-
-        def key_region_name(user_character: UserCharacter) -> str:
-            return user_character.character.talent_domain.region.name
-
+    def create_week_message(cls, user_characters: list[UserCharacter]) -> str:
         if not user_characters:
             return cls.NO_FARM
 
-        return cls.format_week_template(user_characters, key_talent_days, key_region_name, cls.format_user_character)
+        return cls.format_week_template(
+            characters=user_characters,
+            format_character=cls.format_user_character,
+            key_talent_days=lambda user_character: user_character.character.talent_days,
+            key_region_name=lambda user_character: user_character.character.talent_domain.region.name,
+        )
 
     @classmethod
-    def create_all_week_message(cls, characters: Iterable[Character]) -> str:
-        def key_talent_days(character: Character) -> int:
-            return character.talent_days
-
-        def key_region_name(character: Character) -> str:
-            return character.talent_domain.region.name
-
-        return cls.format_week_template(characters, key_talent_days, key_region_name, cls.format_character)
+    def create_all_week_message(cls, characters: list[Character]) -> str:
+        return cls.format_week_template(
+            characters=characters,
+            format_character=cls.format_character,
+            key_talent_days=lambda character: character.talent_days,
+            key_region_name=lambda character: character.talent_domain.region.name,
+        )
 
     @classmethod
-    def create_weekly_bosses_message(cls, user_characters: Iterable[UserCharacter]) -> str:
-        def key_weekly_boss_name(user_character: UserCharacter) -> str:
-            return user_character.character.weekly_boss.name
-
+    def create_weekly_bosses_message(cls, user_characters: list[UserCharacter]) -> str:
         if not user_characters:
             return cls.NO_FARM
 
-        return cls.format_weekly_bosses_template(user_characters, key_weekly_boss_name, cls.format_user_character)
+        return cls.format_weekly_bosses_template(
+            characters=user_characters,
+            format_character=cls.format_user_character,
+            key_weekly_boss_name=lambda user_character: user_character.character.weekly_boss.name,
+        )
 
     @classmethod
-    def create_all_weekly_bosses_message(cls, characters: Iterable[Character]) -> str:
-        def key_weekly_boss_name(character: Character) -> str:
-            return character.weekly_boss.name
-
-        return cls.format_weekly_bosses_template(characters, key_weekly_boss_name, cls.format_character)
+    def create_all_weekly_bosses_message(cls, characters: list[Character]) -> str:
+        return cls.format_weekly_bosses_template(
+            characters=characters,
+            format_character=cls.format_character,
+            key_weekly_boss_name=lambda character: character.weekly_boss.name,
+        )
 
     @classmethod
-    def create_character_list_message(cls, user_characters: Iterable[UserCharacter]) -> str:
+    def create_character_list_message(cls, user_characters: list[UserCharacter]) -> str:
         if not user_characters:
             return cls.EMPTY_CHARACTER_LIST
 
