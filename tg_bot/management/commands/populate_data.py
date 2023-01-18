@@ -29,8 +29,20 @@ class Command(BaseCommand):
         Character.objects.bulk_create(
             [
                 Character(
-                    name="Аль-Хайтам",
+                    name="Дэхья",
                     talent_days=Days.WED_SAT,
+                    talent_domain=steeple_of_ignorance,
+                    weekly_boss=scaramouche,
+                ),
+                Character(
+                    name="Мика",
+                    talent_days=Days.WED_SAT,
+                    talent_domain=forsaken_rift,
+                    weekly_boss=scaramouche,
+                ),
+                Character(
+                    name="Аль-Хайтам",
+                    talent_days=Days.TUE_FRI,
                     talent_domain=steeple_of_ignorance,
                     weekly_boss=scaramouche,
                 ),
