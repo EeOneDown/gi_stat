@@ -76,7 +76,7 @@ def bot_text_command_character_list(message: Message) -> None:
 
 @bot.message_handler(func=BotTextCommands.FOLLOW_CHARACTERS.as_func())
 def bot_text_command_follow_characters(message: Message) -> None:
-    characters = Character.objects.exclude(users__chat_id=message.chat.id).all()
+    characters = Character.objects.exclude(users__chat_id=message.chat.id).order_by("-release_date").all()
     keyboard = BotKeyboards.create_follow_characters_keyboard(characters)
     bot.send_message(message.chat.id, BotMessages.FOLLOW_CHARACTERS, reply_markup=keyboard)
 
@@ -88,7 +88,7 @@ def bot_text_command_character_talents_instruction(message: Message) -> None:
 
 @bot.message_handler(func=BotTextCommands.UNFOLLOW_CHARACTERS.as_func())
 def bot_text_command_unfollow_characters(message: Message) -> None:
-    characters = Character.objects.filter(users__chat_id=message.chat.id).all()
+    characters = Character.objects.filter(users__chat_id=message.chat.id).order_by("-release_date").all()
     keyboard = BotKeyboards.create_unfollow_characters_keyboard(characters)
     bot.send_message(message.chat.id, BotMessages.UNFOLLOW_CHARACTERS, reply_markup=keyboard)
 

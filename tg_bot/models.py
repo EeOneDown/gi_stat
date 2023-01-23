@@ -46,9 +46,6 @@ class Character(models.Model):
     talent_domain = models.ForeignKey(Domain, on_delete=models.CASCADE, related_name="characters_for_td")
     weekly_boss = models.ForeignKey(WeeklyBoss, on_delete=models.CASCADE, related_name="characters_for_wb")
 
-    class Meta:
-        ordering = ["-release_date"]
-
     def __str__(self):
         return self.name
 
@@ -57,7 +54,7 @@ class Character(models.Model):
         return list(
             cls.objects.filter(talent_days__in=days)
             .select_related("talent_domain__region")
-            .order_by("talent_domain__region_id")
+            .order_by("talent_domain__region_id", "-release_date")
             .all()
         )
 
@@ -65,13 +62,13 @@ class Character(models.Model):
     def get_for_week(cls) -> list["Character"]:
         return list(
             cls.objects.select_related("talent_domain__region")
-            .order_by("talent_days", "talent_domain__region_id")
+            .order_by("talent_days", "talent_domain__region_id", "-release_date")
             .all()
         )
 
     @classmethod
     def get_for_weekly_bosses(cls) -> list["Character"]:
-        return list(cls.objects.select_related("weekly_boss").order_by("weekly_boss_id").all())
+        return list(cls.objects.select_related("weekly_boss").order_by("weekly_boss_id", "-release_date").all())
 
 
 class User(models.Model):
@@ -92,7 +89,7 @@ class UserCharacter(models.Model):
         return list(
             cls.objects.filter(user__chat_id=chat_id, character__talent_days__in=days)
             .select_related("character__talent_domain__region")
-            .order_by("character__talent_domain__region_id")
+            .order_by("character__talent_domain__region_id", "-character__release_date")
             .all()
         )
 
@@ -101,7 +98,7 @@ class UserCharacter(models.Model):
         return list(
             UserCharacter.objects.filter(user__chat_id=chat_id)
             .select_related("character__talent_domain__region")
-            .order_by("character__talent_days", "character__talent_domain__region_id")
+            .order_by("character__talent_days", "character__talent_domain__region_id", "-character__release_date")
             .all()
         )
 
@@ -110,7 +107,7 @@ class UserCharacter(models.Model):
         return list(
             UserCharacter.objects.filter(user__chat_id=chat_id)
             .select_related("character__weekly_boss")
-            .order_by("character__weekly_boss_id")
+            .order_by("character__weekly_boss_id", "-character__release_date")
             .all()
         )
 
@@ -119,7 +116,6 @@ class UserCharacter(models.Model):
         return list(
             cls.objects.filter(user__is_subscribed=True, character__talent_days__in=days)
             .select_related("user", "character__talent_domain__region")
-            # order by region for in-code 'group by'
-            .order_by("user_id", "character__talent_domain__region_id")
+            .order_by("user_id", "character__talent_domain__region_id", "-character__release_date")
             .all()
         )
