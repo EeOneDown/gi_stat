@@ -50,6 +50,14 @@ class Character(models.Model):
         return self.name
 
     @classmethod
+    def get_for_follow_characters(cls, chat_id: int) -> list["Character"]:
+        return list(cls.objects.exclude(users__chat_id=chat_id).order_by("-release_date").all())
+
+    @classmethod
+    def get_for_unfollow_characters(cls, chat_id: int) -> list["Character"]:
+        return list(cls.objects.filter(users__chat_id=chat_id).order_by("-release_date").all())
+
+    @classmethod
     def get_for_today(cls, days: list[int]) -> list["Character"]:
         return list(
             cls.objects.filter(talent_days__in=days)
@@ -85,6 +93,15 @@ class UserCharacter(models.Model):
     elemental_burst = models.PositiveSmallIntegerField(default=0)
 
     @classmethod
+    def get_for_character_list(cls, chat_id: int) -> list["UserCharacter"]:
+        return list(
+            cls.objects.filter(user__chat_id=chat_id)
+            .select_related("character")
+            .order_by("character__name")
+            .all()
+        )
+
+    @classmethod
     def get_for_today(cls, chat_id: int, days: list[int]) -> list["UserCharacter"]:
         return list(
             cls.objects.filter(user__chat_id=chat_id, character__talent_days__in=days)
@@ -96,7 +113,7 @@ class UserCharacter(models.Model):
     @classmethod
     def get_for_week(cls, chat_id: int) -> list["UserCharacter"]:
         return list(
-            UserCharacter.objects.filter(user__chat_id=chat_id)
+            cls.objects.filter(user__chat_id=chat_id)
             .select_related("character__talent_domain__region")
             .order_by("character__talent_days", "character__talent_domain__region_id", "-character__release_date")
             .all()
@@ -105,7 +122,7 @@ class UserCharacter(models.Model):
     @classmethod
     def get_for_weekly_bosses(cls, chat_id: int) -> list["UserCharacter"]:
         return list(
-            UserCharacter.objects.filter(user__chat_id=chat_id)
+            cls.objects.filter(user__chat_id=chat_id)
             .select_related("character__weekly_boss")
             .order_by("character__weekly_boss_id", "-character__release_date")
             .all()
