@@ -41,9 +41,13 @@ class WeeklyBoss(models.Model):
 class Character(models.Model):
     name = models.CharField(max_length=64, unique=True)
     icon = models.CharField(max_length=24, blank=True)
+    release_date = models.DateTimeField(null=True)
     talent_days = models.PositiveSmallIntegerField(choices=Days.choices)
     talent_domain = models.ForeignKey(Domain, on_delete=models.CASCADE, related_name="characters_for_td")
     weekly_boss = models.ForeignKey(WeeklyBoss, on_delete=models.CASCADE, related_name="characters_for_wb")
+
+    class Meta:
+        ordering = ["-release_date"]
 
     def __str__(self):
         return self.name
