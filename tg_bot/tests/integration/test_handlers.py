@@ -1,10 +1,11 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import patch, Mock
 
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
-from tg_bot.models import User, Region, WeeklyBoss, Domain, Character, Days
+from tg_bot.models import User, Character, Days
 
 
 @override_settings(TELEGRAM_BOT_SECRET_TOKEN="test-token")
@@ -36,88 +37,37 @@ class TelegramBotTestCase(TestCase):
 
     @staticmethod
     def populate_test_data():
-        r1 = Region.objects.create(name="r1")
-        r2 = Region.objects.create(name="r2")
-        r3 = Region.objects.create(name="r3")
-        r4 = Region.objects.create(name="r4")
+        def create_character(name: str, talent_days: int, region: str, weekly_boss: str, release_date: datetime):
+            return Character.objects.create(
+                name=name,
+                talent_days=talent_days,
+                talent_domain=region,
+                weekly_boss=weekly_boss,
+                release_date=release_date,
+            )
 
-        wb1 = WeeklyBoss.objects.create(name="wb1", region=r1)
-        wb2 = WeeklyBoss.objects.create(name="wb2", region=r2)
-        wb3 = WeeklyBoss.objects.create(name="wb3", region=r3)
-        wb4 = WeeklyBoss.objects.create(name="wb4", region=r4)
+        regions = ["r1", "r2", "r3", "r4"]
+        weekly_bosses = ["wb1", "wb2", "wb3", "wb4"]
+        base_release_date = timezone.make_aware(datetime(2023, 1, 1))
 
-        d1 = Domain.objects.create(name="d1", region=r1)
-        d2 = Domain.objects.create(name="d2", region=r2)
-        d3 = Domain.objects.create(name="d3", region=r3)
-        d4 = Domain.objects.create(name="d4", region=r4)
-
-        Character.objects.create(name="c_mt_d1_wb1", talent_days=Days.MON_THU, talent_domain=d1, weekly_boss=wb1)
-        Character.objects.create(name="c_mt_d1_wb2", talent_days=Days.MON_THU, talent_domain=d1, weekly_boss=wb2)
-        Character.objects.create(name="c_mt_d1_wb3", talent_days=Days.MON_THU, talent_domain=d1, weekly_boss=wb3)
-        Character.objects.create(name="c_mt_d1_wb4", talent_days=Days.MON_THU, talent_domain=d1, weekly_boss=wb4)
-        Character.objects.create(name="c_mt_d2_wb1", talent_days=Days.MON_THU, talent_domain=d2, weekly_boss=wb1)
-        Character.objects.create(name="c_mt_d2_wb2", talent_days=Days.MON_THU, talent_domain=d2, weekly_boss=wb2)
-        Character.objects.create(name="c_mt_d2_wb3", talent_days=Days.MON_THU, talent_domain=d2, weekly_boss=wb3)
-        Character.objects.create(name="c_mt_d2_wb4", talent_days=Days.MON_THU, talent_domain=d2, weekly_boss=wb4)
-        Character.objects.create(name="c_mt_d3_wb1", talent_days=Days.MON_THU, talent_domain=d3, weekly_boss=wb1)
-        Character.objects.create(name="c_mt_d3_wb2", talent_days=Days.MON_THU, talent_domain=d3, weekly_boss=wb2)
-        Character.objects.create(name="c_mt_d3_wb3", talent_days=Days.MON_THU, talent_domain=d3, weekly_boss=wb3)
-        Character.objects.create(name="c_mt_d3_wb4", talent_days=Days.MON_THU, talent_domain=d3, weekly_boss=wb4)
-        Character.objects.create(name="c_mt_d4_wb1", talent_days=Days.MON_THU, talent_domain=d4, weekly_boss=wb1)
-        Character.objects.create(name="c_mt_d4_wb2", talent_days=Days.MON_THU, talent_domain=d4, weekly_boss=wb2)
-        Character.objects.create(name="c_mt_d4_wb3", talent_days=Days.MON_THU, talent_domain=d4, weekly_boss=wb3)
-        Character.objects.create(name="c_mt_d4_wb4", talent_days=Days.MON_THU, talent_domain=d4, weekly_boss=wb4)
-
-        Character.objects.create(name="c_tf_d1_wb1", talent_days=Days.TUE_FRI, talent_domain=d1, weekly_boss=wb1)
-        Character.objects.create(name="c_tf_d1_wb2", talent_days=Days.TUE_FRI, talent_domain=d1, weekly_boss=wb2)
-        Character.objects.create(name="c_tf_d1_wb3", talent_days=Days.TUE_FRI, talent_domain=d1, weekly_boss=wb3)
-        Character.objects.create(name="c_tf_d1_wb4", talent_days=Days.TUE_FRI, talent_domain=d1, weekly_boss=wb4)
-        Character.objects.create(name="c_tf_d2_wb1", talent_days=Days.TUE_FRI, talent_domain=d2, weekly_boss=wb1)
-        Character.objects.create(name="c_tf_d2_wb2", talent_days=Days.TUE_FRI, talent_domain=d2, weekly_boss=wb2)
-        Character.objects.create(name="c_tf_d2_wb3", talent_days=Days.TUE_FRI, talent_domain=d2, weekly_boss=wb3)
-        Character.objects.create(name="c_tf_d2_wb4", talent_days=Days.TUE_FRI, talent_domain=d2, weekly_boss=wb4)
-        Character.objects.create(name="c_tf_d3_wb1", talent_days=Days.TUE_FRI, talent_domain=d3, weekly_boss=wb1)
-        Character.objects.create(name="c_tf_d3_wb2", talent_days=Days.TUE_FRI, talent_domain=d3, weekly_boss=wb2)
-        Character.objects.create(name="c_tf_d3_wb3", talent_days=Days.TUE_FRI, talent_domain=d3, weekly_boss=wb3)
-        Character.objects.create(name="c_tf_d3_wb4", talent_days=Days.TUE_FRI, talent_domain=d3, weekly_boss=wb4)
-        Character.objects.create(name="c_tf_d4_wb1", talent_days=Days.TUE_FRI, talent_domain=d4, weekly_boss=wb1)
-        Character.objects.create(name="c_tf_d4_wb2", talent_days=Days.TUE_FRI, talent_domain=d4, weekly_boss=wb2)
-        Character.objects.create(name="c_tf_d4_wb3", talent_days=Days.TUE_FRI, talent_domain=d4, weekly_boss=wb3)
-        Character.objects.create(name="c_tf_d4_wb4", talent_days=Days.TUE_FRI, talent_domain=d4, weekly_boss=wb4)
-
-        Character.objects.create(name="c_ws_d1_wb1", talent_days=Days.WED_SAT, talent_domain=d1, weekly_boss=wb1)
-        Character.objects.create(name="c_ws_d1_wb2", talent_days=Days.WED_SAT, talent_domain=d1, weekly_boss=wb2)
-        Character.objects.create(name="c_ws_d1_wb3", talent_days=Days.WED_SAT, talent_domain=d1, weekly_boss=wb3)
-        Character.objects.create(name="c_ws_d1_wb4", talent_days=Days.WED_SAT, talent_domain=d1, weekly_boss=wb4)
-        Character.objects.create(name="c_ws_d2_wb1", talent_days=Days.WED_SAT, talent_domain=d2, weekly_boss=wb1)
-        Character.objects.create(name="c_ws_d2_wb2", talent_days=Days.WED_SAT, talent_domain=d2, weekly_boss=wb2)
-        Character.objects.create(name="c_ws_d2_wb3", talent_days=Days.WED_SAT, talent_domain=d2, weekly_boss=wb3)
-        Character.objects.create(name="c_ws_d2_wb4", talent_days=Days.WED_SAT, talent_domain=d2, weekly_boss=wb4)
-        Character.objects.create(name="c_ws_d3_wb1", talent_days=Days.WED_SAT, talent_domain=d3, weekly_boss=wb1)
-        Character.objects.create(name="c_ws_d3_wb2", talent_days=Days.WED_SAT, talent_domain=d3, weekly_boss=wb2)
-        Character.objects.create(name="c_ws_d3_wb3", talent_days=Days.WED_SAT, talent_domain=d3, weekly_boss=wb3)
-        Character.objects.create(name="c_ws_d3_wb4", talent_days=Days.WED_SAT, talent_domain=d3, weekly_boss=wb4)
-        Character.objects.create(name="c_ws_d4_wb1", talent_days=Days.WED_SAT, talent_domain=d4, weekly_boss=wb1)
-        Character.objects.create(name="c_ws_d4_wb2", talent_days=Days.WED_SAT, talent_domain=d4, weekly_boss=wb2)
-        Character.objects.create(name="c_ws_d4_wb3", talent_days=Days.WED_SAT, talent_domain=d4, weekly_boss=wb3)
-        Character.objects.create(name="c_ws_d4_wb4", talent_days=Days.WED_SAT, talent_domain=d4, weekly_boss=wb4)
-
-        Character.objects.create(name="c_a_d1_wb1", talent_days=Days.ALWAYS, talent_domain=d1, weekly_boss=wb1)
-        Character.objects.create(name="c_a_d1_wb2", talent_days=Days.ALWAYS, talent_domain=d1, weekly_boss=wb2)
-        Character.objects.create(name="c_a_d1_wb3", talent_days=Days.ALWAYS, talent_domain=d1, weekly_boss=wb3)
-        Character.objects.create(name="c_a_d1_wb4", talent_days=Days.ALWAYS, talent_domain=d1, weekly_boss=wb4)
-        Character.objects.create(name="c_a_d2_wb1", talent_days=Days.ALWAYS, talent_domain=d2, weekly_boss=wb1)
-        Character.objects.create(name="c_a_d2_wb2", talent_days=Days.ALWAYS, talent_domain=d2, weekly_boss=wb2)
-        Character.objects.create(name="c_a_d2_wb3", talent_days=Days.ALWAYS, talent_domain=d2, weekly_boss=wb3)
-        Character.objects.create(name="c_a_d2_wb4", talent_days=Days.ALWAYS, talent_domain=d2, weekly_boss=wb4)
-        Character.objects.create(name="c_a_d3_wb1", talent_days=Days.ALWAYS, talent_domain=d3, weekly_boss=wb1)
-        Character.objects.create(name="c_a_d3_wb2", talent_days=Days.ALWAYS, talent_domain=d3, weekly_boss=wb2)
-        Character.objects.create(name="c_a_d3_wb3", talent_days=Days.ALWAYS, talent_domain=d3, weekly_boss=wb3)
-        Character.objects.create(name="c_a_d3_wb4", talent_days=Days.ALWAYS, talent_domain=d3, weekly_boss=wb4)
-        Character.objects.create(name="c_a_d4_wb1", talent_days=Days.ALWAYS, talent_domain=d4, weekly_boss=wb1)
-        Character.objects.create(name="c_a_d4_wb2", talent_days=Days.ALWAYS, talent_domain=d4, weekly_boss=wb2)
-        Character.objects.create(name="c_a_d4_wb3", talent_days=Days.ALWAYS, talent_domain=d4, weekly_boss=wb3)
-        Character.objects.create(name="c_a_d4_wb4", talent_days=Days.ALWAYS, talent_domain=d4, weekly_boss=wb4)
+        # create characters for each day / region / weekly boss combination
+        for day, day_label in (
+            (Days.MON_THU, "mt"),
+            (Days.TUE_FRI, "tf"),
+            (Days.WED_SAT, "ws"),
+            (Days.ALWAYS, "a"),
+        ):
+            for region_index, region in enumerate(regions, start=1):
+                for boss_index, weekly_boss in enumerate(weekly_bosses, start=1):
+                    create_character(
+                        name=f"c_{day_label}_d{region_index}_wb{boss_index}",
+                        talent_days=day,
+                        region=region,
+                        weekly_boss=weekly_boss,
+                        release_date=base_release_date,
+                    )
+                # bump release_date to keep deterministic ordering inside a region
+                base_release_date += timedelta(days=1)
 
         # test users and m2m
         u1 = User.objects.create(chat_id=1234)

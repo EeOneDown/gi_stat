@@ -34,7 +34,7 @@ class BotMessages:
         return cls.format_today_template(
             characters=user_characters,
             format_character=cls.format_user_character,
-            key_region_name=lambda user_character: user_character.character.talent_domain.region.name,
+            key_region_name=lambda user_character: user_character.character.talent_domain,
         )
 
     @classmethod
@@ -42,7 +42,7 @@ class BotMessages:
         return cls.format_today_template(
             characters=characters,
             format_character=cls.format_character,
-            key_region_name=lambda character: character.talent_domain.region.name,
+            key_region_name=lambda character: character.talent_domain,
         )
 
     @classmethod
@@ -54,7 +54,7 @@ class BotMessages:
             characters=user_characters,
             format_character=cls.format_user_character,
             key_talent_days=lambda user_character: user_character.character.talent_days,
-            key_region_name=lambda user_character: user_character.character.talent_domain.region.name,
+            key_region_name=lambda user_character: user_character.character.talent_domain,
         )
 
     @classmethod
@@ -63,7 +63,7 @@ class BotMessages:
             characters=characters,
             format_character=cls.format_character,
             key_talent_days=lambda character: character.talent_days,
-            key_region_name=lambda character: character.talent_domain.region.name,
+            key_region_name=lambda character: character.talent_domain,
         )
 
     @classmethod
@@ -74,7 +74,7 @@ class BotMessages:
         return cls.format_weekly_bosses_template(
             characters=user_characters,
             format_character=cls.format_user_character,
-            key_weekly_boss_name=lambda user_character: user_character.character.weekly_boss.name,
+            key_weekly_boss_name=lambda user_character: user_character.character.weekly_boss,
         )
 
     @classmethod
@@ -82,7 +82,7 @@ class BotMessages:
         return cls.format_weekly_bosses_template(
             characters=characters,
             format_character=cls.format_character,
-            key_weekly_boss_name=lambda character: character.weekly_boss.name,
+            key_weekly_boss_name=lambda character: character.weekly_boss,
         )
 
     @classmethod

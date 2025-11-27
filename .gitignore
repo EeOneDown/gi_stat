@@ -29,3 +29,6 @@ celerybeat-schedule
 coverage.xml
 coverage_unit.xml
 /allure-results/
+
+# db
+*.sqlite3
