@@ -55,7 +55,8 @@ def add_new_character(name: str, href: str) -> None:
     talent_domain, row_talent_days = parse_talent_domain(talent_href)
     weekly_boss = parse_weekly_boss(weekly_boss_href)
 
-    print(row_talent_days)
+    if name == 'Путешественник':
+        row_talent_days == "Всегда"
 
     if 'Понедельник, четверг' in row_talent_days:
         talent_days = 1
