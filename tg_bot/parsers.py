@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 from fake_useragent import UserAgent
 
 from tg_bot.models import Character
+from tg_bot.models import Days
 
 
 ua = UserAgent().random
@@ -56,16 +57,16 @@ def add_new_character(name: str, href: str) -> None:
     weekly_boss = parse_weekly_boss(weekly_boss_href)
 
     if name == 'Путешественник':
-        row_talent_days == "Всегда"
+        row_talent_days = "Всегда"
 
     if 'Понедельник, четверг' in row_talent_days:
-        talent_days = 1
+        talent_days = Days.MON_THU
     elif 'Вторник, пятница' in row_talent_days:
-        talent_days = 2
+        talent_days = Days.TUE_FRI
     elif 'Среда, суббота' in row_talent_days:
-        talent_days = 3
+        talent_days = Days.WED_SAT
     else:
-        talent_days = 0
+        talent_days = Days.ALWAYS
 
     release_date = dateparser.parse(row_realise_date)
 
