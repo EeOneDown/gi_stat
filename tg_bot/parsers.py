@@ -8,6 +8,7 @@ from fake_useragent import UserAgent
 
 from tg_bot.models import Character
 from tg_bot.models import Days
+from datatime import timezone
 
 
 ua = UserAgent().random
@@ -68,7 +69,7 @@ def add_new_character(name: str, href: str) -> None:
     else:
         talent_days = Days.ALWAYS
 
-    release_date = dateparser.parse(row_realise_date)
+    release_date = dateparser.parse(row_realise_date).replace(tzinfo=timezone.utc)
 
     character = Character(
         name=name,
