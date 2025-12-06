@@ -8,7 +8,7 @@ from fake_useragent import UserAgent
 
 from tg_bot.models import Character
 from tg_bot.models import Days
-from datatime import timezone
+from datetime import timezone
 
 
 ua = UserAgent().random
