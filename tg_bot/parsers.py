@@ -9,6 +9,7 @@ from fake_useragent import UserAgent
 from tg_bot.models import Character
 from tg_bot.models import Days
 from datetime import timezone
+from string import capwords
 
 
 # ua = UserAgent().random
@@ -72,11 +73,11 @@ def add_new_character(name: str, href: str) -> None:
     release_date = dateparser.parse(row_realise_date).replace(tzinfo=timezone.utc)
 
     character = Character(
-        name=name.capitalize(),
+        name=capwords(name),
         release_date=release_date,
         talent_days=talent_days,
-        talent_domain=talent_domain,
-        weekly_boss=weekly_boss
+        talent_domain=capwords(talent_domain),
+        weekly_boss=capwords(weekly_boss),
     )
 
     try:
@@ -91,7 +92,7 @@ def parse_talent_domain(href: str) -> tuple[str, str]:
     data = soup.find_all('div', class_='pi-data-value')[-2]
     talent_domain, talent_days = data.text[:-1].split('(')
 
-    return talent_domain.capitalize(), talent_days
+    return talent_domain, talent_days
 
 def parse_weekly_boss(href: str) -> str:
     soup = parsing(href)
@@ -102,7 +103,7 @@ def parse_weekly_boss(href: str) -> str:
     if not weekly_boss:
         weekly_boss = data.find('a')
 
-    return weekly_boss.text.strip().capitalize()
+    return weekly_boss.text.strip()
 
 def parsing(href: str) -> BeautifulSoup:
 
