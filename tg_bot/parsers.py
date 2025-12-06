@@ -8,9 +8,11 @@ from fake_useragent import UserAgent
 
 from tg_bot.models import Character
 from tg_bot.models import Days
+from datetime import timezone
+from string import capwords
 
 
-ua = UserAgent().random
+# ua = UserAgent().random
 base_url = 'https://genshin-impact.fandom.com'
 
 
@@ -68,14 +70,14 @@ def add_new_character(name: str, href: str) -> None:
     else:
         talent_days = Days.ALWAYS
 
-    release_date = dateparser.parse(row_realise_date)
+    release_date = dateparser.parse(row_realise_date).replace(tzinfo=timezone.utc)
 
     character = Character(
-        name=name,
+        name=capwords(name),
         release_date=release_date,
         talent_days=talent_days,
-        talent_domain=talent_domain,
-        weekly_boss=weekly_boss
+        talent_domain=capwords(talent_domain),
+        weekly_boss=capwords(weekly_boss),
     )
 
     try:
@@ -111,7 +113,7 @@ def parsing(href: str) -> BeautifulSoup:
             print(url)
             response = requests.get(
                 url=url,
-                headers={'User-Agent': ua},
+                # headers={'User-Agent': ua},
                 timeout=30
             )
             response.raise_for_status()

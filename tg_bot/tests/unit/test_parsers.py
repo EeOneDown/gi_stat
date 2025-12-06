@@ -46,13 +46,12 @@ class ParsersTestCase(unittest.TestCase):
         get_list_mock.assert_called_once()
         parsing_mock.assert_called_once()
 
-    @patch("tg_bot.parsers.dateparser.parse", return_value="2024-01-01")
     @patch("tg_bot.parsers.Character")
     @patch("tg_bot.parsers.parse_weekly_boss", return_value="Azhdaha")
     @patch("tg_bot.parsers.parse_talent_domain", return_value=("Forsaken Rift", "Понедельник, четверг"))
     @patch("tg_bot.parsers.parsing")
     def test_add_new_character_creates_character(
-        self, parsing_mock, parse_talent_mock, parse_boss_mock, character_mock, dateparser_mock
+        self, parsing_mock, parse_talent_mock, parse_boss_mock, character_mock
     ):
         html = """
         <div class="pi-item"><h3>Дата релиза</h3><div class="pi-data-value">1 января 2024 (UTC+3)</div></div>
@@ -75,7 +74,6 @@ class ParsersTestCase(unittest.TestCase):
         character_mock.return_value.save.assert_called_once()
         parse_talent_mock.assert_called_once_with("/talent")
         parse_boss_mock.assert_called_once_with("/boss")
-        dateparser_mock.assert_called_once()
 
     @patch("tg_bot.parsers.parsing")
     def test_parse_talent_domain(self, parsing_mock):
