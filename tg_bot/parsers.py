@@ -11,7 +11,7 @@ from tg_bot.models import Days
 from datetime import timezone
 
 
-ua = UserAgent().random
+# ua = UserAgent().random
 base_url = 'https://genshin-impact.fandom.com'
 
 
@@ -112,7 +112,7 @@ def parsing(href: str) -> BeautifulSoup:
             print(url)
             response = requests.get(
                 url=url,
-                headers={'User-Agent': ua},
+                # headers={'User-Agent': ua},
                 timeout=30
             )
             response.raise_for_status()
