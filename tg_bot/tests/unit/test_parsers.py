@@ -11,6 +11,11 @@ def _soup(html: str) -> BeautifulSoup:
 
 
 class ParsersTestCase(unittest.TestCase):
+    def setUp(self):
+        parsers.temp_characters.clear()
+        parsers.temp_talent.clear()
+        parsers.temp_weekly_bosses.clear()
+
     def test_get_characters_list(self):
         # Use real string names to match data and avoid MagicMock .name behavior.
         char1 = MagicMock()
@@ -71,7 +76,31 @@ class ParsersTestCase(unittest.TestCase):
         self.assertEqual(instance["talent_domain"], "Forsaken Rift")
         self.assertEqual(instance["weekly_boss"], "Azhdaha")
         self.assertEqual(instance["talent_days"], 1)
-        character_mock.return_value.save.assert_called_once()
+        character_mock.return_value.save.assert_not_called()
+        parse_talent_mock.assert_called_once_with("/talent")
+        parse_boss_mock.assert_called_once_with("/boss")
+
+    @patch("tg_bot.parsers.Character")
+    @patch("tg_bot.parsers.parse_weekly_boss", return_value="Azhdaha")
+    @patch("tg_bot.parsers.parse_talent_domain", return_value=("Forsaken Rift", "Понедельник, четверг"))
+    @patch("tg_bot.parsers.parsing")
+    def test_add_new_character_reuses_cached_values(
+        self, parsing_mock, parse_talent_mock, parse_boss_mock, character_mock
+    ):
+        html = """
+        <div class="pi-item"><h3>Дата релиза</h3><div class="pi-data-value">1 января 2024 (UTC+3)</div></div>
+        <span id="Повышение_уровня_талантов"></span>
+        <table><tbody>
+          <tr><td></td><td></td><td><a href="/talent"></a></td><td><a href="/boss"></a></td></tr>
+        </tbody></table>
+        """
+        soup = _soup(html)
+        parsing_mock.side_effect = [soup, soup]
+
+        parsers.add_new_character("Лайла", "/href")
+        parsers.add_new_character("Лайла 2", "/href-2")
+
+        # Domain/boss parsers called once because results cached by href.
         parse_talent_mock.assert_called_once_with("/talent")
         parse_boss_mock.assert_called_once_with("/boss")
 

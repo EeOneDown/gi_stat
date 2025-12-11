@@ -14,6 +14,9 @@ from string import capwords
 
 # ua = UserAgent().random
 base_url = 'https://genshin-impact.fandom.com'
+temp_characters = []
+temp_talent = {} #{href: talent_days, talent_domain}
+temp_weekly_bosses = {} #{href: weekly_boss}
 
 
 def get_characters_list() -> list[str]:
@@ -35,7 +38,14 @@ def sync_characters() -> None:
 
     for char, href in result.items():
         if char not in characters_list:
-            add_new_character(char, href)
+            temp_characters.append(add_new_character(char, href))
+            print('\n', temp_characters , '\n', temp_talent, '\n', temp_weekly_bosses)
+    
+    try:
+        Character.objects.bulk_create(temp_characters)
+
+    except Exception as e:
+        print(f"Ошибка сохранения в базу: {e}")
 
 def add_new_character(name: str, href: str) -> None:
     soup = parsing(href)
@@ -54,9 +64,17 @@ def add_new_character(name: str, href: str) -> None:
     talent_href = data_container.find_all('td')[2].find('a').get('href')
     weekly_boss_href = data_container.find_all('td')[3].find('a').get('href')
 
+    if talent_href in temp_talent.keys():
+        talent_domain, row_talent_days = temp_talent[talent_href]
+    else:
+        talent_domain, row_talent_days = parse_talent_domain(talent_href)
+        temp_talent[talent_href] = talent_domain, row_talent_days
 
-    talent_domain, row_talent_days = parse_talent_domain(talent_href)
-    weekly_boss = parse_weekly_boss(weekly_boss_href)
+    if weekly_boss_href in temp_weekly_bosses.keys():
+        weekly_boss = temp_weekly_bosses[weekly_boss_href]
+    else:
+        weekly_boss = parse_weekly_boss(weekly_boss_href)
+        temp_weekly_bosses[weekly_boss_href] = weekly_boss
 
     if name == 'Путешественник':
         row_talent_days = "Всегда"
@@ -80,11 +98,7 @@ def add_new_character(name: str, href: str) -> None:
         weekly_boss=capwords(weekly_boss),
     )
 
-    try:
-        character.save()
-
-    except Exception as e:
-        print(f"Ошибка сохранения в базу: {e}")
+    return character
 
 def parse_talent_domain(href: str) -> tuple[str, str]:
     soup = parsing(href)
